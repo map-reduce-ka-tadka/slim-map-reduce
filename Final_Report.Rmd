@@ -1,0 +1,70 @@
+---
+title: "Final Report"
+author: "Deepen Mehta, Abhijeet Sharma, Afan Ahmad Khan, Akshay Raje"
+date: "April 16, 2016"
+output: pdf_document
+---
+
+
+# Introduction
+
+  Our program implements Distributed Sort in a server-client system. Our program consist of 1 Server and multiple Client nodes(sort nodes).The Server and each sort node runs on individual EC2 instances, and the Server issues sort tasks to each data nodes. The objective of the program is do a sort on the "Dry Bulb Temp" from the given data set.
+  
+  
+# Design Implementation
+
+1. Our program takes as input N clusters and spins up 1 Server and N Client EC2 instances. 
+2. Once all clients connect to Server, the Server asks the clients to begin the sort tasks.
+3. The 133 data files of Climate dataset from 's3://cs6240sp16/climate' are distributed uniformly (by size) to each client.
+4. Once data is read by the client, each client provides samples of data to server.
+5. The server calculates pivot points from all the samples and distributes the pivots to each client.
+6. Each client partitions its data based on the pivot points and stores partitions in a common bucket in S3.
+7. Each client reads it's repective partitions from S3 and merges the data.
+8. The merged data is finally stored in S3 ( in the output folder).
+
+
+# Code Implementation 
+
+## com.aws package
+This package contains classes to connect to AWS from a java program and handle all request to S3. 
+
+## com.main package
+This package contain classes which contain the 'main' function to run the program.
+
+## com.net package
+This package contains the classes for server and client nodes and the communication between them. 
+
+## com.sort package
+This package consists the implementation of Distributed Sort algorithm as found in [http://web.cs.dal.ca/~arc/teaching/CSci6702/2013/Assignment2/SampleSort.pdf]. 
+
+## com.utils
+This package consists of miscellaneous utility methods.
+
+
+# Job Execution
+
+## 1 Server, 2 Client (m4.xlarge)
+
+We executed our program on AWS EC2 with 1 Server and 2 Client nodes in `m4.xlarge` configuration. Total sorting time was ~25-30 minutes.
+
+## 1 Server, 8 Client (m4.xlarge)
+
+We executed our program on AWS EC2 with 1 Server and 8 Client nodes in `m4.xlarge` configuration. Total running time was ~5-7 minutes.
+
+
+# Results
+
+```{bash, echo=FALSE}
+head output/finalPart-0-*
+```
+
+#Task Distribution:
+
+_Server-client Network:_ Abhijeet Sharma, Deepen Mehta 
+_Distributed Sort:_ Abhijeet Sharma, Deepen Mehta
+_EC2 Automation:_ Afan Khan, Akshay Raje 
+_Packaging:_ Akshay Raje, Afan Khan
+_Code Maintainence:_ Afan Khan  
+_Report:_ Afan Khan
+_ReadMe:_ Akshay Raje
+
