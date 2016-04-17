@@ -10,7 +10,7 @@ import com.net.SortServer;
 
 public class Configuration {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 
 		if(args.length < 5) {
 			System.out.println("Incomplete Arguments\n Terminating.");
