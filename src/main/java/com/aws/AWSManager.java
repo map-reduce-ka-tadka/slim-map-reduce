@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 import com.amazonaws.AmazonClientException;
@@ -96,9 +97,15 @@ public class AWSManager {
 
 		System.out.println("Total files: " + fileList.size());
 		List<List<String>> listPartitions = Lists.partition(fileList, ConfigParams.N_INSTANCES);
+		List<List<String>> subElements = listPartitions.stream().limit(2).collect(Collectors.toList());
 		System.out.println("No. of partitions in listPartitions: " + listPartitions.size());
 		String filenames = "";
-		for (List<String> elementList : listPartitions){
+		/*for (List<String> elementList : listPartitions){
+			if (elementList.size() > clientId){
+				filenames = String.join(",", filenames, elementList.get(clientId));
+			}
+		}*/
+		for (List<String> elementList : subElements){
 			if (elementList.size() > clientId){
 				filenames = String.join(",", filenames, elementList.get(clientId));
 			}
