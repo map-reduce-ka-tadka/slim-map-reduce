@@ -40,9 +40,6 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 	static String pivots;
 	static Map<String, Integer> addressMap = new HashMap<String, Integer>();
 	static int counter = 0;
-	public SortServerHandler(){
-		System.out.println("Server started and waiting for clients to connect.");
-	}
 
 	@Override
 	public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
