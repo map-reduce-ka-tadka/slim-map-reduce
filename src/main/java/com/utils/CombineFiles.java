@@ -68,7 +68,9 @@ public class CombineFiles
 					nextName2 = list2.readLine();
 				}
 			}
-			outputFile.close();			
+			outputFile.close();
+			list1.close();
+			list2.close();
 		}
 	}
 }   
