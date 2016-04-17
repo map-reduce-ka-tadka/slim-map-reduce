@@ -1,154 +1,90 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<groupId>com.main</groupId>
-	<artifactId>Configuration</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>DistributedSort</name>
-	<build>
-		<plugins>
-
-
-
-			<!-- download source code in Eclipse, best practice -->
-
-			<plugin>
-
-				<groupId>org.apache.maven.plugins</groupId>
-
-				<artifactId>maven-eclipse-plugin</artifactId>
-
-				<version>2.9</version>
-
-				<configuration>
-
-					<downloadSources>true</downloadSources>
-
-					<downloadJavadocs>false</downloadJavadocs>
-
-				</configuration>
-
-			</plugin>
-
-
-
-			<!-- Set a JDK compiler level -->
-
-			<plugin>
-
-				<groupId>org.apache.maven.plugins</groupId>
-
-				<artifactId>maven-compiler-plugin</artifactId>
-
-				<version>2.3.2</version>
-
-				<configuration>
-
-					<source>1.8</source>
-
-					<target>1.8</target>
-
-				</configuration>
-
-			</plugin>
-
-
-
-			<!-- Maven Assembly Plugin -->
-
-			<plugin>
-
-				<groupId>org.apache.maven.plugins</groupId>
-
-				<artifactId>maven-assembly-plugin</artifactId>
-
-				<version>2.4.1</version>
-
-				<configuration>
-
-					<!-- get all project dependencies -->
-
-					<descriptorRefs>
-
-						<descriptorRef>jar-with-dependencies</descriptorRef>
-
-					</descriptorRefs>
-
-					<finalName>DistributedSort</finalName>
-
-					<appendAssemblyId>false</appendAssemblyId>
-
-					<!-- MainClass in mainfest make a executable jar -->
-
-					<archive>
-
-						<manifest>
-
-							<mainClass>com.main.Configuration</mainClass>
-
-						</manifest>
-
-					</archive>
-
-
-
-				</configuration>
-
-				<executions>
-
-					<execution>
-
-						<id>make-assembly</id>
-
-						<!-- bind to the packaging phase -->
-
-						<phase>package</phase>
-
-						<goals>
-
-							<goal>single</goal>
-
-						</goals>
-
-					</execution>
-
-				</executions>
-
-			</plugin>
-
-
-
-		</plugins>
-
-	</build>
-
-	<dependencies>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-all</artifactId>
-			<version>4.0.36.Final</version>
-			<scope>compile</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-lang3</artifactId>
-			<version>3.4</version>
-		</dependency>
-		<dependency>
-			<groupId>com.google.guava</groupId>
-			<artifactId>guava</artifactId>
-			<version>19.0</version>
-		</dependency>
-		<dependency>
-			<groupId>com.amazonaws</groupId>
-			<artifactId>aws-java-sdk</artifactId>
-			<version>1.10.66</version>
-		</dependency>
-		<dependency>
-			<groupId>net.sf.opencsv</groupId>
-			<artifactId>opencsv</artifactId>
-			<version>2.3</version>
-		</dependency>
-
-	</dependencies>
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.main</groupId>
+    <artifactId>Configuration</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>slim-map-reduce</name>
+    <build>
+        <plugins>
+            <!-- download source code in Eclipse, best practice -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-eclipse-plugin</artifactId>
+                <version>2.9</version>
+                <configuration>
+                    <downloadSources>true</downloadSources>
+                    <downloadJavadocs>false</downloadJavadocs>
+                </configuration>
+            </plugin>
+            <!-- Set a JDK compiler level -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+            <!-- Maven Assembly Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.4.1</version>
+                <configuration>
+                    <!-- get all project dependencies -->
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <finalName>slim-map-reduce</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                    <!-- MainClass in mainfest make a executable jar -->
+                    <archive>
+                        <manifest>
+                            <mainClass>com.main.Configuration</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <!-- bind to the packaging phase -->
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+    <dependencies>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.0.36.Final</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.4</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>19.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk</artifactId>
+            <version>1.10.66</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.opencsv</groupId>
+            <artifactId>opencsv</artifactId>
+            <version>2.3</version>
+        </dependency>
+    </dependencies>
 </project>
