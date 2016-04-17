@@ -4,6 +4,10 @@
 # Eclipse related folder
 .classpath
 
+# IntelliJ related folders
+.idea/
+*.iml
+
 # Java class files
 *.class
 
