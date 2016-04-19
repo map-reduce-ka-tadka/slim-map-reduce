@@ -44,7 +44,7 @@ import au.com.bytecode.opencsv.CSVParser;
 
 public class AWSManager {
 	AmazonS3 s3;	
-
+	final static short MAX_RETRY = 3;
 	public AWSManager() {
 		this.s3 = configureS3();
 	}
@@ -75,164 +75,235 @@ public class AWSManager {
 		return s3;
 	}
 
-	public ArrayList<TemperatureInfo> getAllFiles(int clientId)  {    	
-		/* (Run by Client) */
-		// fetching filenames depending on count
-		ObjectListing objectListing = s3.listObjects(new ListObjectsRequest()
-				.withBucketName(ConfigParams.INPUT_BUCKET)
-				.withPrefix(ConfigParams.INPUT_FOLDER + "/")
-				.withDelimiter("/"));
-		TreeMap<Long, String> filenamesMap = new TreeMap<Long, String>();
-		for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
-			filenamesMap.put(objectSummary.getSize(), objectSummary.getKey());			
-			System.out.println(" - " + objectSummary.getKey() + "  " +
-					"(size = " + objectSummary.getSize() + ")");
-		}
-		TreeSet<String> filenamesTree = new TreeSet<String>(filenamesMap.values());
-		filenamesTree.remove("climate/");
-
-		// save all filenames to a list
-		ArrayList<String> fileList = new ArrayList<String>();
-		fileList.addAll(filenamesTree);
-
-		System.out.println("Total files: " + fileList.size());
-		List<List<String>> listPartitions = Lists.partition(fileList, ConfigParams.N_INSTANCES);
-		List<List<String>> subElements = listPartitions.stream().limit(2).collect(Collectors.toList());
-		System.out.println("No. of partitions in listPartitions: " + listPartitions.size());
-		String filenames = "";
-		/*for (List<String> elementList : listPartitions){
-			if (elementList.size() > clientId){
-				filenames = String.join(",", filenames, elementList.get(clientId));
-			}
-		}*/
-		for (List<String> elementList : subElements){
-			if (elementList.size() > clientId){
-				filenames = String.join(",", filenames, elementList.get(clientId));
-			}
-		}
-
-		filenames = filenames.substring(1);
-		System.out.println("From client, filenames: " + filenames);
-		// fetching only part of actual data
+	public ArrayList<TemperatureInfo> getAllFiles(int clientId)  {
 		ArrayList<TemperatureInfo> temperatureRecords = new ArrayList<TemperatureInfo>();
-		String[] filenamesList = filenames.split(",");
-
-		int counter = 0;
-		System.out.printf("From Client, Getting all files from s3://%s/%s with instances %s", 
-				ConfigParams.INPUT_BUCKET, ConfigParams.INPUT_FOLDER, ConfigParams.N_INSTANCES);
-		for (String filename : filenamesList) {
-			System.out.println("File counter: " + counter);            
-			System.out.println("filename: " + filename);
-			S3Object s3object = this.s3.getObject(new GetObjectRequest(ConfigParams.INPUT_BUCKET, filename));
-			BufferedReader reader;
+		short retryCount = 0;
+		boolean retry = false;
+		/* (Run by Client) */
+		do{
 			try {
-				reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(s3object.getObjectContent())));
-				String line;
-				while ((line = reader.readLine()) != null) {
-					CSVParser csvParser = new CSVParser(',', '"');
-					String[] parsedString;
-					parsedString = csvParser.parseLine(line);
-					TemperatureInfo tempInfo = TemperatureInfo.createInstance(parsedString);
-					if (tempInfo != null) {
-						temperatureRecords.add(tempInfo);
+				// fetching filenames depending on count
+				ObjectListing objectListing = s3.listObjects(new ListObjectsRequest()
+						.withBucketName(ConfigParams.INPUT_BUCKET)
+						.withPrefix(ConfigParams.INPUT_FOLDER + "/")
+						.withDelimiter("/"));
+				TreeMap<Long, String> filenamesMap = new TreeMap<Long, String>();
+				for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
+					filenamesMap.put(objectSummary.getSize(), objectSummary.getKey());			
+					/* System.out.println(" - " + objectSummary.getKey() + "  " +
+							"(size = " + objectSummary.getSize() + ")");*/
+				}
+				TreeSet<String> filenamesTree = new TreeSet<String>(filenamesMap.values());
+				filenamesTree.remove("climate/");
+
+				// save all filenames to a list
+				ArrayList<String> fileList = new ArrayList<String>();
+				fileList.addAll(filenamesTree);
+
+				System.out.println("Total files: " + fileList.size());
+				List<List<String>> listPartitions = Lists.partition(fileList, ConfigParams.N_INSTANCES);
+				List<List<String>> subElements = listPartitions.stream().limit(2).collect(Collectors.toList());
+				System.out.println("No. of partitions in listPartitions: " + listPartitions.size());
+				String filenames = "";
+				/*for (List<String> elementList : listPartitions){
+					if (elementList.size() > clientId){
+						filenames = String.join(",", filenames, elementList.get(clientId));
+					}
+				}*/
+				for (List<String> elementList : subElements){
+					if (elementList.size() > clientId){
+						filenames = String.join(",", filenames, elementList.get(clientId));
 					}
 				}
-			} catch (IOException e) {
+
+				filenames = filenames.substring(1);
+				System.out.println("From client, filenames: " + filenames);
+				// fetching only part of actual data
+				String[] filenamesList = filenames.split(",");
+
+				int counter = 0;
+				System.out.printf("From Client, Getting all files from s3://%s/%s with instances %s", 
+						ConfigParams.INPUT_BUCKET, ConfigParams.INPUT_FOLDER, ConfigParams.N_INSTANCES);
+				for (String filename : filenamesList) {
+					System.out.println("File counter: " + counter);            
+					System.out.println("filename: " + filename);
+					S3Object s3object = this.s3.getObject(new GetObjectRequest(ConfigParams.INPUT_BUCKET, filename));
+					BufferedReader reader;
+					try {
+						reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(s3object.getObjectContent())));
+						String line;
+						while ((line = reader.readLine()) != null) {
+							CSVParser csvParser = new CSVParser(',', '"');
+							String[] parsedString;
+							parsedString = csvParser.parseLine(line);
+							TemperatureInfo tempInfo = TemperatureInfo.createInstance(parsedString);
+							if (tempInfo != null) {
+								temperatureRecords.add(tempInfo);
+							}
+						}
+					} catch (IOException e) {
+					}
+					counter += 1;
+				}
+			} catch (AmazonClientException ace) {
+				System.out.println("Caught an AmazonClientException, which " +
+						"means the client encountered " +
+						"an internal error while trying to " +
+						"communicate with S3, " +
+						"such as not being able to access the network.");
+				System.out.println("Error Message: " + ace.getMessage());
+				if (retryCount == MAX_RETRY){
+					retry = false;
+					System.out.println("Max Retry Limit achieved.Aborting Program: " + retryCount);
+				}
+				else{
+					retry = true;
+					retryCount += 1;
+					System.out.println("Retrying step. Retry Count: " + retryCount);
+				}
 			}
-			counter += 1;
 		}
+		while(retry);		
 		return temperatureRecords;
 	}
 	public void sendFileToS3(String uploadFileName, String ec2FileName){
-		try {
-			System.out.println("Uploading File to S3 from a file\n");
-			File file = new File(uploadFileName);
-			this.s3.putObject(new PutObjectRequest(ConfigParams.OUTPUT_BUCKET, ec2FileName, file));
+		short retryCount = 0;
+		short MAX_RETRY = 3;
+		boolean retry = false;
+		do{
+			try {
+				System.out.println("Uploading File to S3 from a file\n");
+				File file = new File(uploadFileName);
+				this.s3.putObject(new PutObjectRequest(ConfigParams.OUTPUT_BUCKET, ec2FileName, file));
 
-		} catch (AmazonServiceException ase) {
-			System.out.println("Caught an AmazonServiceException, which " +
-					"means your request made it " +
-					"to Amazon S3, but was rejected with an error response" +
-					" for some reason.");
-			System.out.println("Error Message:    " + ase.getMessage());
-			System.out.println("HTTP Status Code: " + ase.getStatusCode());
-			System.out.println("AWS Error Code:   " + ase.getErrorCode());
-			System.out.println("Error Type:       " + ase.getErrorType());
-			System.out.println("Request ID:       " + ase.getRequestId());
-		} catch (AmazonClientException ace) {
-			System.out.println("Caught an AmazonClientException, which " +
-					"means the client encountered " +
-					"an internal error while trying to " +
-					"communicate with S3, " +
-					"such as not being able to access the network.");
-			System.out.println("Error Message: " + ace.getMessage());
+			} catch (AmazonServiceException ase) {
+				System.out.println("Caught an AmazonServiceException, which " +
+						"means your request made it " +
+						"to Amazon S3, but was rejected with an error response" +
+						" for some reason.");
+				System.out.println("Error Message:    " + ase.getMessage());
+				System.out.println("HTTP Status Code: " + ase.getStatusCode());
+				System.out.println("AWS Error Code:   " + ase.getErrorCode());
+				System.out.println("Error Type:       " + ase.getErrorType());
+				System.out.println("Request ID:       " + ase.getRequestId());
+			} catch (AmazonClientException ace) {
+				System.out.println("Caught an AmazonClientException, which " +
+						"means the client encountered " +
+						"an internal error while trying to " +
+						"communicate with S3, " +
+						"such as not being able to access the network.");
+				System.out.println("Error Message: " + ace.getMessage());
+				if (retryCount == MAX_RETRY){
+					retry = false;
+					System.out.println("Max Retry Limit achieved.Aborting Program: " + retryCount);
+				}
+				else{
+					retry = true;
+					retryCount += 1;
+					System.out.println("Retrying step. Retry Count: " + retryCount);
+				}
+			}
 		}
+		while(retry);
 	}
 
 	public String readFilesfromS3andConcat(int clientId) throws FileNotFoundException, IOException {
-
-		//String concatenatedFilename = null;
-		// creating a folder
-		File dir = new File(String.valueOf(clientId));
-		boolean successful = dir.mkdir();
-		if (successful)
-		{
-			// creating the directory succeeded
-			System.out.println("directory was created successfully" + clientId);
-		}
-		else
-		{
-			// creating the directory failed
-			System.out.println("failed trying to create the directory" + clientId);
-		}
-		ObjectListing objectListing = s3.listObjects(new ListObjectsRequest()
-				.withBucketName(ConfigParams.OUTPUT_BUCKET)
-				.withPrefix(clientId + "/")
-				.withDelimiter("/"));
-		TreeSet<String> filenamesTree = new TreeSet<String>();
-		for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
-			filenamesTree.add(objectSummary.getKey());			
-			System.out.println(" - " + objectSummary.getKey() + "  " +
-					"(size = " + objectSummary.getSize() + ")");
-		}
-		filenamesTree.remove(clientId+"/");
-		int counter = 0;
-		ArrayList<String> localfileNames = new ArrayList<>();
-		System.out.println("Downloading an object");
-		for (String filename : filenamesTree) {
-			System.out.println("File counter: " + counter);            
-			System.out.println("filename: " + filename);
-			S3Object s3object = this.s3.getObject(new GetObjectRequest(ConfigParams.OUTPUT_BUCKET, filename));
+		short retryCount = 0;
+		short MAX_RETRY = 3;
+		boolean retry = false;
+		do{
 			try {
-				localfileNames.add(filename.split("/")[1]);
-				S3ObjectInputStream objectContent = s3object.getObjectContent();
-				IOUtils.copy(objectContent, new FileOutputStream(clientId+"/"+filename.split("/")[1]));
-			} catch (IOException e) {
+				//String concatenatedFilename = null;
+				// creating a folder
+				File dir = new File(String.valueOf(clientId));
+				boolean successful = dir.mkdir();
+				if (successful)
+				{
+					// creating the directory succeeded
+					System.out.println("directory was created successfully" + clientId);
+				}
+				else
+				{
+					// creating the directory failed
+					System.out.println("failed trying to create the directory" + clientId);
+				}
+				ObjectListing objectListing = s3.listObjects(new ListObjectsRequest()
+						.withBucketName(ConfigParams.OUTPUT_BUCKET)
+						.withPrefix(clientId + "/")
+						.withDelimiter("/"));
+				TreeSet<String> filenamesTree = new TreeSet<String>();
+				for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
+					filenamesTree.add(objectSummary.getKey());			
+					System.out.println(" - " + objectSummary.getKey() + "  " +
+							"(size = " + objectSummary.getSize() + ")");
+				}
+				filenamesTree.remove(clientId+"/");
+				int counter = 0;
+				ArrayList<String> localfileNames = new ArrayList<>();
+				System.out.println("Downloading an object");
+				for (String filename : filenamesTree) {
+					System.out.println("File counter: " + counter);            
+					System.out.println("filename: " + filename);
+					S3Object s3object = this.s3.getObject(new GetObjectRequest(ConfigParams.OUTPUT_BUCKET, filename));
+					try {
+						localfileNames.add(filename.split("/")[1]);
+						S3ObjectInputStream objectContent = s3object.getObjectContent();
+						IOUtils.copy(objectContent, new FileOutputStream(clientId+"/"+filename.split("/")[1]));
+					} catch (IOException e) {
+					}
+					counter += 1;
+				}
+				System.out.println(filenamesTree.toString());
+				System.out.println(localfileNames.toString());
+		
+				int x = 0;
+				while (x < ConfigParams.N_INSTANCES)
+				{
+					if(x == 0){
+						System.out.println("Merging ..... ");
+						System.out.println(clientId+"/"+localfileNames.get(1) +"....." +clientId+"/"+localfileNames.get(0));
+						CombineFiles.merger(clientId+"/"+localfileNames.get(1),clientId+"/"+localfileNames.get(0),clientId+"/"+"finalPart-"+clientId+"-1");
+						x+=2;
+					}
+					else{
+						System.out.println("Merging ..... ");
+						System.out.println(clientId+"/"+localfileNames.get(x) +"....." +clientId+"/"+"finalPart-"+clientId+"-"+(x-1));
+						CombineFiles.merger(clientId+"/"+localfileNames.get(x),clientId+"/"+"finalPart-"+clientId+"-"+(x-1),clientId+"/"+"finalPart-"+clientId+"-"+x);
+						x+=1;
+					}
+		
+				}
+				return clientId + "/" + "finalPart-" + clientId + "-" + (x-1);
+			} catch (AmazonServiceException ase) {
+				System.out.println("Caught an AmazonServiceException, which " +
+						"means your request made it " +
+						"to Amazon S3, but was rejected with an error response" +
+						" for some reason.");
+				System.out.println("Error Message:    " + ase.getMessage());
+				System.out.println("HTTP Status Code: " + ase.getStatusCode());
+				System.out.println("AWS Error Code:   " + ase.getErrorCode());
+				System.out.println("Error Type:       " + ase.getErrorType());
+				System.out.println("Request ID:       " + ase.getRequestId());
+			} catch (AmazonClientException ace) {
+				System.out.println("Caught an AmazonClientException, which " +
+						"means the client encountered " +
+						"an internal error while trying to " +
+						"communicate with S3, " +
+						"such as not being able to access the network.");
+				System.out.println("Error Message: " + ace.getMessage());
+				if (retryCount == MAX_RETRY){
+					retry = false;
+					System.out.println("Max Retry Limit achieved.Aborting Program: " + retryCount);
+				}
+				else{
+					retry = true;
+					retryCount += 1;
+					System.out.println("Retrying step. Retry Count: " + retryCount);
+				}
 			}
-			counter += 1;
 		}
-		System.out.println(filenamesTree.toString());
-		System.out.println(localfileNames.toString());
-
-		int x = 0;
-		while (x < ConfigParams.N_INSTANCES)
-		{
-			if(x == 0){
-				System.out.println("Merging ..... ");
-				System.out.println(clientId+"/"+localfileNames.get(1) +"....." +clientId+"/"+localfileNames.get(0));
-				CombineFiles.merger(clientId+"/"+localfileNames.get(1),clientId+"/"+localfileNames.get(0),clientId+"/"+"finalPart-"+clientId+"-1");
-				x+=2;
-			}
-			else{
-				System.out.println("Merging ..... ");
-				System.out.println(clientId+"/"+localfileNames.get(x) +"....." +clientId+"/"+"finalPart-"+clientId+"-"+(x-1));
-				CombineFiles.merger(clientId+"/"+localfileNames.get(x),clientId+"/"+"finalPart-"+clientId+"-"+(x-1),clientId+"/"+"finalPart-"+clientId+"-"+x);
-				x+=1;
-			}
-
-		}
-
-		return clientId+"/"+"finalPart-"+clientId+"-"+(x-1);
+		while(retry);
+		return null;		
 	}
 
 	public static void main(String[] args) throws FileNotFoundException, IOException {
