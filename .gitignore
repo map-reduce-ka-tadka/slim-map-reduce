@@ -8,6 +8,9 @@
 .idea/
 *.iml
 
+# Log folder
+logs/
+
 # Java class files
 *.class
 
