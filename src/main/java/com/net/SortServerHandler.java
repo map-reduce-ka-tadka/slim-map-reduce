@@ -29,7 +29,7 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
 
 public class SortServerHandler extends ChannelInboundHandlerAdapter{
-
+	
 	static final ChannelGroup channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 	static int nInstances = ConfigParams.N_INSTANCES;
 	static Integer worldState = 0;    
@@ -43,10 +43,11 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 
 	@Override
 	public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-		System.out.println("[START] A New Client has Connected with Address : " + ctx.channel().remoteAddress());
+		SortServer.LOG.info("[START] A New Client has Connected with Address: {}", ctx.channel().remoteAddress());
 		addressMap.put(ctx.channel().remoteAddress().toString(), SortServerHandler.counter);
 		SortServerHandler.counter += 1;        
 		if (addressMap.size() == nInstances){
+			SortServer.LOG.info("All Clients Connected. Address Map: {}", addressMap.entrySet());
 			worldState += 1;
 		}
 		channels.add(ctx.channel());
@@ -55,34 +56,46 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 
 	@Override
 	public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-		System.out.println("[END] The Client has been disconnected with Address : " + ctx.channel().remoteAddress());
+		SortServer.LOG.info("[END] The Client has been disconnected with Address: {}", ctx.channel().remoteAddress());
 		channels.remove(ctx.channel());
 		super.handlerRemoved(ctx);
 	}
 
 	@Override
 	public void channelActive(final ChannelHandlerContext ctx) throws UnknownHostException {
+		// TODO: Use ctx.channel().isWritable() then write to prevent OutOfMemoryError
 		// See if everyone's ready
-		System.out.println("Connected to the client" + ctx.channel().remoteAddress());    	
+		SortServer.LOG.info("Connected to the client: {}", ctx.channel().remoteAddress());
+		//System.out.println("Connected to the client" + ctx.channel().remoteAddress());    	
 		ctx.writeAndFlush("0_Hi, You are Connected to Server now in: " + InetAddress.getLocalHost().getHostAddress());
-
+		/*Channel channel = ...;
+		FileChannel fc = ...;
+		channel.writeAndFlush(new DefaultFileRegion(fc, 0, fileLength));
+		This only works if you not need to modify the data on the fly. If so use ChunkedWriteHandler and NioChunkedFile.*/
+		
+		/*Schedule and execute tasks via EventLoop this reduces the needed Threads and also makes sure it’s Thread-safe*/
 	}
 
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) {
-		System.out.println("addressList: " + addressMap.entrySet());
-		System.out.println("Reading Channel from " + ctx.channel().remoteAddress());
-		System.out.println("In Server, Received message: " + (String) msg);
+		SortServer.LOG.info("Current addressList: {}", addressMap.entrySet());
+		//System.out.println("Current addressList: " + addressMap.entrySet());
+		SortServer.LOG.info("Reading Channel from: {}", ctx.channel().remoteAddress());
+		//System.out.println("Reading Channel from " + ctx.channel().remoteAddress());
+		SortServer.LOG.info("In Server, Received message: {}", msg.toString());
+		//System.out.println("In Server, Received message: " + (String) msg);
 		String[] clientMessage = ((String) msg).split("_");
 		Integer clientCode = Integer.parseInt(clientMessage[0]);
 		if (worldState == 0){
 			// do nothing
-			System.out.println("Not all clients have connected.Please Wait..");
+			SortServer.LOG.info("Not all clients have connected.Please Wait..");
+			//System.out.println("Not all clients have connected.Please Wait..");
 			ctx.writeAndFlush("Sabad rakh" + "_"  + msg);
 		}
 		else if (clientCode == (worldState - 1)){
 			//add set
-			System.out.println("Inside add set for Client: " + ctx.channel().remoteAddress()) ;
+			SortServer.LOG.info("Inside add set for Client: {}", ctx.channel().remoteAddress());
+			//System.out.println("Inside add set for Client: " + ctx.channel().remoteAddress()) ;
 			if (clientCode == 1){
 				//Store all samples in a set
 				sampleSet.add(clientMessage[1]); 
@@ -97,9 +110,11 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 						pivots = SampleSort.phaseTwo(samples);
 					}
 					worldState += 1;
-					System.out.println("Client " + ctx.channel().remoteAddress() + 
+					SortServer.LOG.info("Client {} has changed World State. Client Message: {} , new WorldState: {}", 
+							ctx.channel().remoteAddress(), msg, worldState.toString());
+					/*System.out.println("Client " + ctx.channel().remoteAddress() + 
 							" has changed World State. Client Message: " + msg + 
-							" , new WorldState: " + worldState.toString());
+							" , new WorldState: " + worldState.toString());*/
 					doFunction(ctx, clientMessage[1], clientCode);
 				}  
 				else{
@@ -115,7 +130,8 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 		}
 		else if ((clientCode < (worldState - 1)) || (clientCode == -100)){
 			//free pass for clients who have lagged behind
-			System.out.println("Inside free pass for Client: " + ctx.channel().remoteAddress()) ;
+			SortServer.LOG.info("Inside free pass for Client: {}", ctx.channel().remoteAddress()) ;
+			//System.out.println("Inside free pass for Client: " + ctx.channel().remoteAddress()) ;
 			doFunction(ctx, clientMessage[1], clientCode);
 		}   	
 	}
@@ -124,40 +140,48 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 		String result = "";
 		code += 1;
 		switch (code) {
-		case 1: System.out.println("Sending files to client: " + addressMap.entrySet().toString());				
-		result = code.toString() + "_" + addressMap.entrySet() + "ID" + addressMap.get(ctx.channel().remoteAddress().toString());
-		System.out.println("sending.."+result);
-		ctx.writeAndFlush(result);
-		break;
-		case 2: System.out.println("Sending Client pivots: " + pivots);		
-		//String pivotValues = "5, 21";
-		result = code.toString() + "_" + pivots;
-		ctx.writeAndFlush(result);
-		break;
-		case 3: System.out.println("Client is asking for Green Signal to Merge");	
-		result = code.toString() + "_" + "Jaa, Jee le apni Zindagi";
-		ctx.writeAndFlush(result);
-		break;
-		case -99:	System.out.println("Client is asking for Shutdown");
-		System.out.println("Closing client: " + ctx.channel().remoteAddress());
-		ctx.close();
-		shutDownCount += 1;
-		if (shutDownCount == nInstances){
-			// All clients should have exited
-			System.out.println("Server exit");
-			try {
-				FileWriter fw = new FileWriter("finish",false);
-				fw.close();
-				new AWSManager().sendFileToS3("finish", ConfigParams.OUTPUT_FOLDER+"/_SUCCESS");
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			ctx.channel().parent().close();
-		}
-		break;
-		default: System.out.println("Something's wrong. Client cannot send " + code + " code. Message: " + msg);
-		ctx.writeAndFlush("Sabad rakh" + "_"  + code + "_" + msg);
-		break;
+		case 1:	SortServer.LOG.info("Sending files to client: {}", addressMap.entrySet().toString());; 
+				//System.out.println("Sending files to client: " + addressMap.entrySet().toString());				
+				result = code.toString() + "_" + addressMap.entrySet() + "ID" + addressMap.get(ctx.channel().remoteAddress().toString());
+				SortServer.LOG.info("sending.. {}", result);
+				//System.out.println("sending.."+result);
+				ctx.writeAndFlush(result);
+				break;
+		case 2: SortServer.LOG.info("Sending Client pivots: {}", pivots);
+				//System.out.println("Sending Client pivots: " + pivots);		
+				//String pivotValues = "5, 21";
+				result = code.toString() + "_" + pivots;
+				ctx.writeAndFlush(result);
+				break;
+		case 3: SortServer.LOG.info("Client is asking for Green Signal to Merge");
+				//System.out.println("Client is asking for Green Signal to Merge");	
+				result = code.toString() + "_" + "Jaa, Jee le apni Zindagi";
+				ctx.writeAndFlush(result);
+				break;
+		case -99:
+				SortServer.LOG.info("Client is asking for Shutdown");
+				SortServer.LOG.info("Closing client: {}", ctx.channel().remoteAddress());
+				ctx.close();
+				shutDownCount += 1;
+				if (shutDownCount == nInstances){
+					// All clients should have exited					
+					//System.out.println("Server exit");
+					try {
+						FileWriter fw = new FileWriter("finish",false);
+						fw.close();
+						new AWSManager().sendFileToS3("finish", ConfigParams.OUTPUT_FOLDER+"/_SUCCESS");						
+					} 
+					catch (IOException e) {
+						e.printStackTrace();
+					}					
+					ctx.channel().parent().close();
+				}
+				break;
+		default: 
+			SortServer.LOG.warn("Something's wrong. Client cannot send {} code. Message: {}", code, msg);
+			//System.out.println("Something's wrong. Client cannot send " + code + " code. Message: " + msg);
+			ctx.writeAndFlush("Sabad rakh" + "_"  + code + "_" + msg);
+			break;
 		}
 	}
 
