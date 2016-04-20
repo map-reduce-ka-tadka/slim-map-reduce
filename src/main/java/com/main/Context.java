@@ -1,6 +1,6 @@
 package com.main;
 
-import com.examples.M;
+
 import com.mr.Mapper;
 import com.mr.Reducer;
 

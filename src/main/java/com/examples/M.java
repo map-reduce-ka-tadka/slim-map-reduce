@@ -15,6 +15,8 @@ public class M extends Mapper {
 		// TODO Auto-generated method stub		
 		
 		System.out.println("In map method");
+		
+		context.write(key, value);
 	}
 
 	@Override
