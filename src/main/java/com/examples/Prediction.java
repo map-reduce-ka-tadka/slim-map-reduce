@@ -17,9 +17,7 @@ public class Prediction {
 		Mapper mapper = getInstance(Context.mapper); 
 		mapper.map("", "", context);
 		
-//		Class<?> mapper = Context.mapper;
-//		Constructor<?> ctor = mapper.getConstructor();
-//		Object myMapper = ctor.newInstance(new Object[] {ctor});
+
 		
 	}
 	

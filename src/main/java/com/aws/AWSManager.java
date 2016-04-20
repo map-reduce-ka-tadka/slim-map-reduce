@@ -364,7 +364,7 @@ public class AWSManager {
 	}
 
 	public void mapAllFiles(int clientID, Mapper mapper, Context context) {
-		// TODO Auto-generated method stub
+		
 		
 	}
 
