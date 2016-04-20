@@ -1,27 +1,32 @@
 package com.main;
 
-public abstract class Context {
+
+import com.map.Mapper;
+import com.reduce.Reducer;
+
+
+public class Context {
 	
-	public Class mapper;
-	public Class reducer;
-	public String inputPath;
-	public String outputPath;
+	public static Class<? extends Mapper> mapper;
+	public static Class<? extends Reducer> reducer;
+	public static String inputPath;
+	public static String outputPath;
 	
 	
-	public void setMapper(Class mapper) {
-		this.mapper = mapper;
+	public void setMapperClass(Class<? extends Mapper> mapper) {
+		Context.mapper = mapper;
 	}
 
-	public void setReducer(Class reducer) {
-		this.reducer = reducer;
+	public void setReducerClass(Class<? extends Reducer> reducer) {
+		Context.reducer = reducer;
 	}
 
 	public void setInputPath(String inputPath) {
-		this.inputPath = inputPath;
+		Context.inputPath = inputPath;
 	}
 
 	public void setOutputPath(String outputPath) {
-		this.outputPath = outputPath;
+		Context.outputPath = outputPath;
 	}
 
 	public static void write(String key, String value) {
@@ -29,4 +34,7 @@ public abstract class Context {
 	}
 	
 	
+
+	
+
 }
