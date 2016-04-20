@@ -2,7 +2,6 @@ package com.map;
 
 import com.aws.AWSManager;
 import com.main.Context;
-import com.mr.Mapper;
 
 public class Map {
 	

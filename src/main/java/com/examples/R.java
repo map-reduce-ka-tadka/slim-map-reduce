@@ -1,7 +1,7 @@
 package com.examples;
 
 import com.main.Context;
-import com.mr.Reducer;
+import com.reduce.Reducer;
 
 public class R extends Reducer{
 

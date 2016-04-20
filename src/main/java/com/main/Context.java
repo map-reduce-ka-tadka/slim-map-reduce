@@ -1,8 +1,8 @@
 package com.main;
 
 
-import com.mr.Mapper;
-import com.mr.Reducer;
+import com.map.Mapper;
+import com.reduce.Reducer;
 
 
 public class Context {

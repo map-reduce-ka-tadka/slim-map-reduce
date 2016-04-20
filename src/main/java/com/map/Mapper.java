@@ -1,4 +1,4 @@
-package com.mr;
+package com.map;
 
 import com.main.Context;
 

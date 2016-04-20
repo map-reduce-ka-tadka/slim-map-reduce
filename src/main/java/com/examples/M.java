@@ -1,7 +1,7 @@
 package com.examples;
 
 import com.main.Context;
-import com.mr.Mapper;
+import com.map.Mapper;
 
 public class M extends Mapper {
 
