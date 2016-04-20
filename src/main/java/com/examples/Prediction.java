@@ -4,7 +4,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
 import com.main.Context;
-import com.mr.Mapper;
+import com.map.Mapper;
 
 public class Prediction {
 	

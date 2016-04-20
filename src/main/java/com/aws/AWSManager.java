@@ -38,7 +38,7 @@ import com.amazonaws.util.IOUtils;
 import com.google.common.collect.Lists;
 import com.main.ConfigParams;
 import com.main.Context;
-import com.mr.Mapper;
+import com.map.Mapper;
 import com.sort.TemperatureInfo;
 import com.utils.CombineFiles;
 

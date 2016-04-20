@@ -1,4 +1,4 @@
-package com.mr;
+package com.reduce;
 
 import com.main.Context;
 
