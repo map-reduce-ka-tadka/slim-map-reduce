@@ -37,6 +37,8 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.amazonaws.util.IOUtils;
 import com.google.common.collect.Lists;
 import com.main.ConfigParams;
+import com.main.Context;
+import com.mr.Mapper;
 import com.sort.TemperatureInfo;
 import com.utils.CombineFiles;
 
@@ -359,6 +361,11 @@ public class AWSManager {
 		}
 		while(retry);
 		return null;		
+	}
+
+	public void mapAllFiles(int clientID, Mapper mapper, Context context) {
+		// TODO Auto-generated method stub
+		
 	}
 
 	/*public static void main(String[] args) throws FileNotFoundException, IOException {
