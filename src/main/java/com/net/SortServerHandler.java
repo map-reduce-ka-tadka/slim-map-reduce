@@ -1,9 +1,3 @@
-/*
- * @author Abhijeet Sharma
- * @version 1.0  
- * @since April 8, 2016 
- */
-
 package com.net;
 
 import java.io.FileWriter;
@@ -21,6 +15,7 @@ import org.apache.commons.lang3.StringUtils;
 import com.aws.AWSManager;
 import com.main.ConfigParams;
 import com.sort.SampleSort;
+import com.utils.MessageHandler;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -28,18 +23,35 @@ import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
 
+/**
+ * This Class handles all the requests from the Client
+ * @author Abhijeet Sharma
+ * @version 2.0
+ * @since April 8, 2016 
+ */
 public class SortServerHandler extends ChannelInboundHandlerAdapter{
-	
+
 	static final ChannelGroup channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 	static int nInstances = ConfigParams.N_INSTANCES;
-	static Integer worldState = 0;    
-	static Map<String, HashSet<String>> stateMap = new HashMap<String, HashSet<String>>();
+	static final int WORLD_STATE_START = 0;
+	static Integer worldState = WORLD_STATE_START;    
+	static Map<Integer, HashSet<String>> stateMap = new HashMap<Integer, HashSet<String>>();
 	static Queue<String> filenameQueue;   
 	static int shutDownCount = 0;
 	static TreeSet<String> sampleSet = new TreeSet<String>();;
 	static String pivots;
 	static Map<String, Integer> addressMap = new HashMap<String, Integer>();
 	static int counter = 0;
+	static final int SUCCESS_STATUS = 1;
+	static final int WAIT_STATUS = 0;
+	static final int FAILURE_STATUS = -1;
+
+	static final int CONNECTION_OPCODE = 0;
+	static final int READ_AND_SAMPLE_DATA_OPCODE = 1;
+	static final int FETCH_PIVOTS_OPCODE = 2;
+	static final int PARTITION_AND_UPLOAD_DATA_OPCODE = 3;
+	static final int MERGE_PARTITION_OPCODE = 4;
+	static final int CLIENT_EXIT_OPCODE = -100;
 
 	@Override
 	public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
@@ -67,103 +79,123 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 		// See if everyone's ready
 		SortServer.LOG.info("Connected to the client: {}", ctx.channel().remoteAddress());
 		//System.out.println("Connected to the client" + ctx.channel().remoteAddress());    	
-		ctx.writeAndFlush("0_Server Connected at: " + InetAddress.getLocalHost().getHostAddress());
+		ctx.writeAndFlush(new MessageHandler(CONNECTION_OPCODE, "Server Connected at: " + InetAddress.getLocalHost().getHostAddress(), SUCCESS_STATUS));
 		/*Channel channel = ...;
 		FileChannel fc = ...;
 		channel.writeAndFlush(new DefaultFileRegion(fc, 0, fileLength));
 		This only works if you not need to modify the data on the fly. If so use ChunkedWriteHandler and NioChunkedFile.*/
-		
+
 		/*Schedule and execute tasks via EventLoop this reduces the needed Threads and also makes sure it’s Thread-safe*/
 	}
 
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) {
 		//SortServer.LOG.info("Reading Channel from: {}", ctx.channel().remoteAddress());
-		SortServer.LOG.info("In Server, Received message: {}", msg.toString());
-		String[] clientMessage = ((String) msg).split("_");
-		Integer clientCode = Integer.parseInt(clientMessage[0]);
-		if (worldState == 0){
-			// do nothing
-			//SortServer.LOG.info("Not all clients have connected.Please Wait..");
-			ctx.writeAndFlush("Wait" + "_"  + msg);
+		MessageHandler message = (MessageHandler) msg;
+		SortServer.LOG.info("In Server, Received message: {}", message.toString());
+		int clientCompletionCode = message.getCode();
+		String clientMessage = message.getMessage();		
+		int clientStatus = message.getStatus();
+
+		if (clientStatus == FAILURE_STATUS){
+			ctx.close();
 		}
-		else if (clientCode == (worldState - 1)){
-			//add set
-			//SortServer.LOG.info("Inside add set for Client: {}", ctx.channel().remoteAddress());
-			if (clientCode == 1){
-				//Store all samples in a set
-				sampleSet.add(clientMessage[1]); 
-			}    			
-			if (stateMap.containsKey(clientMessage[0])){
-				HashSet<String> hs = stateMap.get(clientMessage[0]);
-				hs.add(ctx.channel().remoteAddress().toString());
-				stateMap.put(clientMessage[0], hs);
-				if (hs.size() == nInstances){
-					if (clientCode == 1) {
-						String samples = StringUtils.join(sampleSet, ",");
-						pivots = SampleSort.phaseTwo(samples);
-					}
-					worldState += 1;
-					SortServer.LOG.info("Client {} has changed World State. Client Message: {} , new WorldState: {}", 
-							ctx.channel().remoteAddress(), msg, worldState.toString());
-					doFunction(ctx, clientMessage[1], clientCode);
-				}  
-				else{
-					ctx.writeAndFlush("Wait" + "_"  + msg);
-				}
+		else{
+			if (worldState == WORLD_STATE_START){
+				SortServer.LOG.info("Not all clients have connected.Please Wait..");			 
+				ctx.writeAndFlush(new MessageHandler(clientCompletionCode, clientMessage, WAIT_STATUS));
 			}
-			else{
-				HashSet<String> hs = new HashSet<String>();
-				hs.add(ctx.channel().remoteAddress().toString());
-				stateMap.put(clientMessage[0], hs);
-				ctx.writeAndFlush("Wait" + "_"  + msg);
-			}  
+			else if (clientCompletionCode == (worldState - 1)){
+				//add set
+				//SortServer.LOG.info("Inside add set for Client: {}", ctx.channel().remoteAddress());
+				if (clientCompletionCode == READ_AND_SAMPLE_DATA_OPCODE){
+					//Store all samples in a set
+					sampleSet.add(clientMessage); 
+				}    			
+				if (stateMap.containsKey(clientCompletionCode)){
+					// Atleast one another client has also finished this step.
+					// Add this step and Client IP to stateMap.
+					HashSet<String> hs = stateMap.get(clientCompletionCode);
+					hs.add(ctx.channel().remoteAddress().toString());
+					stateMap.put(clientCompletionCode, hs);
+					if (hs.size() == nInstances){
+						// All clients have completed this step.
+						// Increment World State and Proceed with next step
+						if (clientCompletionCode == READ_AND_SAMPLE_DATA_OPCODE) {
+							// Samples from all clients received, Find pivots.
+							String samples = StringUtils.join(sampleSet, ",");
+							pivots = SampleSort.fetchPivotsFromSamples(samples);
+							worldState += 1;
+						}
+						worldState += 1;
+						SortServer.LOG.info("Client {} has changed World State. Client Message: {} , new WorldState: {}", 
+								ctx.channel().remoteAddress(), msg, worldState.toString());
+						executeNextStep(ctx, clientCompletionCode, clientMessage);
+					}  
+					else{
+						// Not all Clients have finished this Step.Wait.
+						ctx.writeAndFlush(new MessageHandler(clientCompletionCode, clientMessage, WAIT_STATUS));
+					}
+				}
+				else{
+					// This is the first client to finish this step.
+					// Add this step and Client IP to stateMap and wait.
+					HashSet<String> hs = new HashSet<String>();
+					hs.add(ctx.channel().remoteAddress().toString());
+					stateMap.put(clientCompletionCode, hs);
+					ctx.writeAndFlush(new MessageHandler(clientCompletionCode, clientMessage, WAIT_STATUS));
+				}  
+			}
+			else if ((clientCompletionCode < (worldState - 1)) || (clientCompletionCode == CLIENT_EXIT_OPCODE)){
+				//Free pass for clients who have lagged behind
+				//SortServer.LOG.info("Inside free pass for Client: {}", ctx.channel().remoteAddress()) ;
+				executeNextStep(ctx, clientCompletionCode, clientMessage);
+			}
 		}
-		else if ((clientCode < (worldState - 1)) || (clientCode == -100)){
-			//free pass for clients who have lagged behind
-			//SortServer.LOG.info("Inside free pass for Client: {}", ctx.channel().remoteAddress()) ;
-			doFunction(ctx, clientMessage[1], clientCode);
-		}   	
 	}
 
-	public void doFunction(ChannelHandlerContext ctx, String msg, Integer code){
-		String result = "";
-		code += 1;
+	public void executeNextStep(ChannelHandlerContext ctx, int code, String message){
+		MessageHandler result = null;
+
 		switch (code) {
-		case 1:	SortServer.LOG.info("Code: {}, Sending Address Map to client: {}", code-1, addressMap.entrySet().toString());; 			
-				result = code.toString() + "_" + addressMap.entrySet() + "ID" + addressMap.get(ctx.channel().remoteAddress().toString());
-				//SortServer.LOG.info("sending.. {}", result);
-				ctx.writeAndFlush(result);
-				break;
-		case 2: SortServer.LOG.info("Code: {}, Sending the client pivots: {}", code-1, pivots);	
-				result = code.toString() + "_" + pivots;
-				ctx.writeAndFlush(result);
-				break;
-		case 3: SortServer.LOG.info("Code: {}, Client is requesting to Merge partitions", code-1);
-				result = code.toString() + "_" + "Merge Partitions";
-				ctx.writeAndFlush(result);
-				break;
-		case -99:
-				SortServer.LOG.info("Code: {}, Client is requesting shutdown", code-1);
-				SortServer.LOG.info("Closing client: {}", ctx.channel().remoteAddress());
-				ctx.close();
-				shutDownCount += 1;
-				if (shutDownCount == nInstances){
-					// All clients should have exited					
-					try {
-						FileWriter fw = new FileWriter("_SUCCESS", false);
-						fw.close();
-						new AWSManager().sendFileToS3("_SUCCESS", ConfigParams.OUTPUT_FOLDER + "/_SUCCESS");						
-					} 
-					catch (IOException e) {
-						e.printStackTrace();
-					}					
-					ctx.channel().parent().close();
-				}
-				break;
+		case CONNECTION_OPCODE:
+			SortServer.LOG.info("Code: {}, Sending Address Map to client: {}", code, addressMap.entrySet().toString());
+			//code += 1;			 			
+			result = new MessageHandler(READ_AND_SAMPLE_DATA_OPCODE, addressMap.entrySet() + "ID" + addressMap.get(ctx.channel().remoteAddress().toString()), SUCCESS_STATUS);
+			//SortServer.LOG.info("sending.. {}", result);
+			ctx.writeAndFlush(result);
+			break;
+		case READ_AND_SAMPLE_DATA_OPCODE: 
+			SortServer.LOG.info("Code: {}, Sending the client pivots: {}", code, pivots);	
+			result = new MessageHandler(PARTITION_AND_UPLOAD_DATA_OPCODE, pivots, SUCCESS_STATUS);
+			ctx.writeAndFlush(result);
+			break;
+		case PARTITION_AND_UPLOAD_DATA_OPCODE: 
+			SortServer.LOG.info("Code: {}, Client is requesting to Merge partitions", code);
+			result = new MessageHandler(MERGE_PARTITION_OPCODE, "Merge Partitions", SUCCESS_STATUS);
+			ctx.writeAndFlush(result);
+			break;
+		case CLIENT_EXIT_OPCODE:
+			SortServer.LOG.info("Code: {}, Client is requesting shutdown", code);
+			SortServer.LOG.info("Closing client: {}", ctx.channel().remoteAddress());
+			ctx.close();
+			shutDownCount += 1;
+			if (shutDownCount == nInstances){
+				// All clients should have exited					
+				try {
+					FileWriter fw = new FileWriter("_SUCCESS", false);
+					fw.close();
+					new AWSManager().sendFileToS3("_SUCCESS", ConfigParams.OUTPUT_FOLDER + "/_SUCCESS");						
+				} 
+				catch (IOException e) {
+					e.printStackTrace();
+				}					
+				ctx.channel().parent().close();
+			}
+			break;
 		default: 
-			SortServer.LOG.warn("Code: {}, Something's wrong. Client cannot send this code. Message: {}", code-1, msg);
-			ctx.writeAndFlush("Wait" + "_"  + code + "_" + msg);
+			SortServer.LOG.warn("Code: {}, Something's wrong. Client cannot send this code. Message: {}", code, message);
+			ctx.writeAndFlush(new MessageHandler(code, message, FAILURE_STATUS));
 			break;
 		}
 	}

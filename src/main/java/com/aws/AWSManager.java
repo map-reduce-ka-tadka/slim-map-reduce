@@ -145,7 +145,28 @@ public class AWSManager {
 					}
 					counter += 1;
 				}
-			} catch (AmazonClientException ace) {
+			}
+			catch (AmazonServiceException ase) {
+				System.out.println("Caught an AmazonServiceException, which " +
+						"means your request made it " +
+						"to Amazon S3, but was rejected with an error response" +
+						" for some reason.");
+				System.out.println("Error Message:    " + ase.getMessage());
+				System.out.println("HTTP Status Code: " + ase.getStatusCode());
+				System.out.println("AWS Error Code:   " + ase.getErrorCode());
+				System.out.println("Error Type:       " + ase.getErrorType());
+				System.out.println("Request ID:       " + ase.getRequestId());
+				if (retryCount == MAX_RETRY){
+					retry = false;
+					System.out.println("Max Retry Limit achieved.Aborting Program: " + retryCount);
+				}
+				else{
+					retry = true;
+					retryCount += 1;
+					System.out.println("Retrying step. Retry Count: " + retryCount);
+				}
+			}  
+			catch (AmazonClientException ace) {
 				System.out.println("Caught an AmazonClientException, which " +
 						"means the client encountered " +
 						"an internal error while trying to " +
@@ -176,7 +197,8 @@ public class AWSManager {
 				File file = new File(uploadFileName);
 				this.s3.putObject(new PutObjectRequest(ConfigParams.OUTPUT_BUCKET, ec2FileName, file));
 
-			} catch (AmazonServiceException ase) {
+			} 
+			catch (AmazonServiceException ase) {
 				System.out.println("Caught an AmazonServiceException, which " +
 						"means your request made it " +
 						"to Amazon S3, but was rejected with an error response" +
@@ -186,7 +208,17 @@ public class AWSManager {
 				System.out.println("AWS Error Code:   " + ase.getErrorCode());
 				System.out.println("Error Type:       " + ase.getErrorType());
 				System.out.println("Request ID:       " + ase.getRequestId());
-			} catch (AmazonClientException ace) {
+				if (retryCount == MAX_RETRY){
+					retry = false;
+					System.out.println("Max Retry Limit achieved.Aborting Program: " + retryCount);
+				}
+				else{
+					retry = true;
+					retryCount += 1;
+					System.out.println("Retrying step. Retry Count: " + retryCount);
+				}
+			} 
+			catch (AmazonClientException ace) {
 				System.out.println("Caught an AmazonClientException, which " +
 						"means the client encountered " +
 						"an internal error while trying to " +
@@ -255,7 +287,7 @@ public class AWSManager {
 				}
 				System.out.println(filenamesTree.toString());
 				System.out.println(localfileNames.toString());
-		
+
 				int x = 0;
 				while (x < ConfigParams.N_INSTANCES)
 				{
@@ -271,10 +303,23 @@ public class AWSManager {
 						CombineFiles.merger(clientId+"/"+localfileNames.get(x),clientId+"/"+"finalPart-"+clientId+"-"+(x-1),clientId+"/"+"finalPart-"+clientId+"-"+x);
 						x+=1;
 					}
-		
+
 				}
 				return clientId + "/" + "finalPart-" + clientId + "-" + (x-1);
-			} catch (AmazonServiceException ase) {
+			} 
+			catch (ArrayIndexOutOfBoundsException ae) {
+				ae.printStackTrace();
+				if (retryCount == MAX_RETRY){
+					retry = false;
+					System.out.println("Max Retry Limit achieved.Aborting Program: " + retryCount);
+				}
+				else{
+					retry = true;
+					retryCount += 1;
+					System.out.println("Retrying step. Retry Count: " + retryCount);
+				}
+			}
+			catch (AmazonServiceException ase) {
 				System.out.println("Caught an AmazonServiceException, which " +
 						"means your request made it " +
 						"to Amazon S3, but was rejected with an error response" +
@@ -284,7 +329,17 @@ public class AWSManager {
 				System.out.println("AWS Error Code:   " + ase.getErrorCode());
 				System.out.println("Error Type:       " + ase.getErrorType());
 				System.out.println("Request ID:       " + ase.getRequestId());
-			} catch (AmazonClientException ace) {
+				if (retryCount == MAX_RETRY){
+					retry = false;
+					System.out.println("Max Retry Limit achieved.Aborting Program: " + retryCount);
+				}
+				else{
+					retry = true;
+					retryCount += 1;
+					System.out.println("Retrying step. Retry Count: " + retryCount);
+				}
+			} 
+			catch (AmazonClientException ace) {
 				System.out.println("Caught an AmazonClientException, which " +
 						"means the client encountered " +
 						"an internal error while trying to " +
@@ -306,9 +361,9 @@ public class AWSManager {
 		return null;		
 	}
 
-	public static void main(String[] args) throws FileNotFoundException, IOException {
+	/*public static void main(String[] args) throws FileNotFoundException, IOException {
 		AWSManager aws = new AWSManager();
 		aws.readFilesfromS3andConcat(0);
-	}
+	}*/
 
 }
