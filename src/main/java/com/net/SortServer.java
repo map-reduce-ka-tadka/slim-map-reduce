@@ -1,9 +1,3 @@
-/*
- * @author Abhijeet Sharma
- * @version 1.0  
- * @since April 8, 2016 
- */
-
 package com.net;
 
 import java.net.InetSocketAddress;
@@ -24,11 +18,21 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import io.netty.util.internal.logging.Slf4JLoggerFactory;
 
-
+/**
+ * This Class initializes the server and provides methods to start it.
+ * @author Abhijeet Sharma
+ * @version 2.0
+ * @since April 8, 2016 
+ */
 public class SortServer {
 	public static final Logger LOG = LoggerFactory.getLogger("server");
 	
+	/**
+	 * Starts the server.
+	 * @throws InterruptedException
+	 */
 	public static void start() throws InterruptedException {
+		
 		InternalLoggerFactory.setDefaultFactory(new Slf4JLoggerFactory());
 		// configure the server
 		EventLoopGroup bossGroup = new NioEventLoopGroup(1);
@@ -52,7 +56,6 @@ public class SortServer {
 			// Start the server.
 			ChannelFuture f = boot.bind(new InetSocketAddress(ConfigParams.MASTER_ADDRESS, ConfigParams.PORT)).sync();
 			LOG.info("Server started at {}:{}", ConfigParams.MASTER_ADDRESS, ConfigParams.PORT);
-			//System.out.println("Server started at " + ConfigParams.MASTER_ADDRESS + ":" + ConfigParams.PORT);
 			
 			// Wait until the server socket is closed.
 			f.channel().closeFuture().sync();			
