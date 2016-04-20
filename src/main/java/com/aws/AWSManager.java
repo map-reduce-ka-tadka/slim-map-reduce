@@ -39,6 +39,7 @@ import com.google.common.collect.Lists;
 import com.main.ConfigParams;
 import com.main.Context;
 import com.map.Mapper;
+import com.reduce.Reducer;
 import com.sort.TemperatureInfo;
 import com.utils.CombineFiles;
 
@@ -365,6 +366,10 @@ public class AWSManager {
 
 	public void mapAllFiles(int clientID, Mapper mapper, Context context) {
 		
+		
+	}
+
+	public void reduceKey(int clientID, Reducer reducer, Context context) {
 		
 	}
 
