@@ -2,7 +2,6 @@ package com.reduce;
 
 import com.aws.AWSManager;
 import com.main.Context;
-import com.map.Mapper;
 import com.utils.GenericFactory;
 
 public class Reduce {
@@ -18,6 +17,10 @@ public class Reduce {
 	
 	public void reduce(int clientID) {
 		AWSConnect.reduceKey(clientID,this.reducer,context);
+		
+		AWSConnect.sendFileToS3("", "");
+		
+		// send response to master finish of reduce task
 	}
 
 }

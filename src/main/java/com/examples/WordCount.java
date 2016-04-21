@@ -5,7 +5,7 @@ import java.lang.reflect.InvocationTargetException;
 import com.main.Context;
 import com.map.Mapper;
 
-public class Prediction {
+public class WordCount {
 	
 	public static void main(String[] args) throws NoSuchMethodException, SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
 		
