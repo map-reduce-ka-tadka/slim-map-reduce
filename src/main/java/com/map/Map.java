@@ -17,6 +17,9 @@ public class Map {
 	
 	public void map(int clientID) {
 		AWSConnect.mapAllFiles(clientID,this.mapper,context);
+		AWSConnect.sendFileToS3("", "");
+		
+		// send response to master finish of map task
 	}
 		
 }
