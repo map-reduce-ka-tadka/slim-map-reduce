@@ -65,8 +65,7 @@ public class BufferedReaderIterable implements Iterable<String> {
     public static void main(String[] args) throws FileNotFoundException {
 		
     	File file = new File("README.md");
-    	BufferedReaderIterable bufferedReaderIterable = new BufferedReaderIterable(file);
-    	
+    	BufferedReaderIterable bufferedReaderIterable = new BufferedReaderIterable(file);    	
     	for (String s : bufferedReaderIterable) {
     		System.out.println(s);
     	}

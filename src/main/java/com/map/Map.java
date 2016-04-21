@@ -2,6 +2,7 @@ package com.map;
 
 import com.aws.AWSManager;
 import com.main.Context;
+import com.utils.GenericFactory;
 
 public class Map {
 	
@@ -11,18 +12,14 @@ public class Map {
 	
 	public Map() throws IllegalAccessException, InstantiationException {
 		this.AWSConnect = new AWSManager();
-		this.mapper = getInstance(Context.mapper);
+		this.mapper = GenericFactory.getInstance(Context.mapper);
 	}
 	
 	public void map(int clientID) {
 		AWSConnect.mapAllFiles(clientID,this.mapper,context);
+		AWSConnect.sendFileToS3("", "");
+		
+		// send response to master finish of map task
 	}
-	
-	
-	public static <T> T getInstance(Class<T> theClass)
-		    throws IllegalAccessException, InstantiationException {
-		    return theClass.newInstance();
-		}
-	
-	
+		
 }

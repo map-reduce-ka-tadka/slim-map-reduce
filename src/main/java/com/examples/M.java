@@ -16,7 +16,6 @@ public class M extends Mapper {
 		
 		System.out.println("In map method");
 		
-		context.write(key, value);
 	}
 
 	@Override
