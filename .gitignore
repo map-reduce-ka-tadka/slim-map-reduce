@@ -1,9 +1,12 @@
 # Mac OS related folder
 .DS_Store
 
-# Ignore config files
+# Ignore runtime files
 smr.config
 masterPublicAddress.txt
+_SUCCESS
+_ERROR
+*.*~
 
 # Eclipse related folder
 .classpath
@@ -13,8 +16,10 @@ masterPublicAddress.txt
 .idea/
 *.iml
 
-# Log folder
+# Temp folder
+JOB-*
 logs/
+output/
 
 # Java class files
 *.class
