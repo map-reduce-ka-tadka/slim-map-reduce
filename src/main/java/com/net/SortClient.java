@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import com.main.ConfigParams;
 
 public class SortClient {
+	
 	public static final Logger LOG = LoggerFactory.getLogger("client");
 	
 	public static void start() {
