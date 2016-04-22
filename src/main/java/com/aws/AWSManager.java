@@ -52,6 +52,7 @@ import com.utils.FileUtils;
 public class AWSManager {
 	AmazonS3 s3;	
 	final static short MAX_RETRY = 3;
+	
 	public AWSManager() {
 		this.s3 = configureS3();
 	}
