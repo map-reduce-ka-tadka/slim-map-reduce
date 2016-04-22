@@ -9,6 +9,7 @@ smr.config
 
 # Eclipse related folder
 .classpath
+.settings
 
 # IntelliJ related folders
 .idea/
