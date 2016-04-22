@@ -16,6 +16,7 @@ public class ServerMain {
 	public static String SERVER_ADDRESS;
 	public static int SERVER_PORT;
 	public static int N_INSTANCES;
+	public static int ACTIVE_INSTANCES;
 	
 	public static String INPUT_PATH;
 	public static String OUTPUT_PATH;

@@ -13,8 +13,8 @@ public class WordCount {
 		Context context = new Context();
 		context.setMapperClass(M.class);
 		context.setReducerClass(R.class);
-		context.setInputPath("s3n://bucketfora2/input");
-		context.setOutputPath("s3n://bucketfora9/output");
+		context.setInputPath(args[0]);
+		context.setOutputPath(args[1]);
 		context.jobWaitCompletionTrue();
 	}
 	

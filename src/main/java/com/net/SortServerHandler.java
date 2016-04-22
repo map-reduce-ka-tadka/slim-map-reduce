@@ -63,6 +63,7 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 	@Override
 	public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
 		SortServer.LOG.info("[START] A New Client has Connected with Address: {}", ctx.channel().remoteAddress());
+		ServerMain.ACTIVE_INSTANCES += 1;
 		channels.add(ctx.channel());
 		super.handlerAdded(ctx);
 	}
@@ -70,6 +71,8 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 	@Override
 	public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
 		SortServer.LOG.info("[END] The Client has been disconnected with Address: {}", ctx.channel().remoteAddress());
+		ServerMain.ACTIVE_INSTANCES -= 1;
+		ServerMain.N_INSTANCES -= 1;
 		channels.remove(ctx.channel());
 		super.handlerRemoved(ctx);
 	}
@@ -229,7 +232,7 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 			SortServer.LOG.info("Closing client: {}", ctx.channel().remoteAddress());
 			ctx.close();
 			shutDownCount += 1;
-			if (shutDownCount == ServerMain.N_INSTANCES){
+			if (shutDownCount >= ServerMain.N_INSTANCES){
 				// All clients should have exited					
 				try {
 					FileWriter fw = new FileWriter("_SUCCESS", false);
