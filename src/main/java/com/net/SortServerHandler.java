@@ -126,7 +126,7 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 					String clientId = clientMessageArr[0];
 					ServerMain.INPUT_PATH = clientMessageArr[1];
 					ServerMain.OUTPUT_PATH = clientMessageArr[2];
-					String[] outputPathSplit = ServerMain.INPUT_PATH.split("/");
+					String[] outputPathSplit = ServerMain.OUTPUT_PATH.split("/");
 					ServerMain.OUTPUT_BUCKET = outputPathSplit[2];
 					ServerMain.OUTPUT_FOLDER = StringUtils.join(Arrays.asList(outputPathSplit).subList(3, outputPathSplit.length), "/");
 					if (!addressMap.containsKey(clientMessage)){
@@ -235,6 +235,7 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 					FileWriter fw = new FileWriter("_SUCCESS", false);
 					fw.close();
 					new AWSManager().sendFileToS3("_SUCCESS", ServerMain.OUTPUT_FOLDER + "/_SUCCESS");
+					System.out.println("logpath: " + ServerMain.LOGS_PATH + "/" + "server_"+ ServerMain.JOB_ID + ".log");
 					new AWSManager().sendFileToS3(ServerMain.LOGS_PATH + "/" + "server_"+ ServerMain.JOB_ID + ".log", 
 							ServerMain.LOGS_PATH + "/" + "server_"+ ServerMain.JOB_ID + ".log");
 				} 
