@@ -34,7 +34,7 @@ public class ServerMain {
 		SERVER_ADDRESS = params[0];
 		SERVER_PORT = Integer.parseInt(params[1]);
 		N_INSTANCES = Integer.parseInt(params[2]);
-		JOB_ID = "JOB_" + UUID.randomUUID().toString();
+		JOB_ID = "JOB-" + UUID.randomUUID().toString();
 		LOGS_PATH = "logs";
 		TEMP_PATH = JOB_ID + "/" + "_temp";
 		// create temp directory for intermediate files and logs

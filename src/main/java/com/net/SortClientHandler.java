@@ -11,12 +11,14 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 
+import com.aws.AWSManager;
 import com.main.ClientMain;
 import com.map.Map;
 import com.reduce.Reduce;
 import com.sort.SampleSort;
 import com.utils.FileUtils;
 import com.utils.MessageHandler;
+
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
@@ -26,7 +28,7 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 	static final int SUCCESS_STATUS = 1;
 	static final int WAIT_STATUS = 0;
 	static final int FAILURE_STATUS = -1;
-	
+
 	static final int CLIENT_HANDSHAKE_OPCODE = 0;
 	static final int MAP_OPCODE = 1;
 	static final int SORT_READ_AND_SAMPLE_DATA_OPCODE = 2;
@@ -54,7 +56,7 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 		int StatusFromServer = message.getStatus();
 
 		MessageHandler response = null;
-		
+
 		if (StatusFromServer == FAILURE_STATUS){
 			response = new MessageHandler(requestCodeFromServer, messageFromServer, FAILURE_STATUS);
 		}
@@ -101,7 +103,7 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 				System.out.println("In client, map: " + ClientMain.CLIENT_NUM);
 				m.map(ClientMain.CLIENT_NUM);
 				SortClient.LOG.info("[END MAP PHASE]  => Map");
-				
+
 				SortClient.LOG.info("Requesting to Start Shuffle-Sort Step");
 				response = new MessageHandler(MAP_OPCODE, "Map Done", SUCCESS_STATUS);
 			}
@@ -143,6 +145,8 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 				r.reduce(ClientMain.CLIENT_NUM);
 				SortClient.LOG.info("[END REDUCE PHASE] => Reduce");
 				SortClient.LOG.info("Requesting server to shutdown Client");
+				new AWSManager().sendFileToS3(ClientMain.LOGS_PATH + "/" + "client_"+ ClientMain.CLIENT_ID + ".log", 
+						ClientMain.LOGS_PATH + "/" + "client_"+ ClientMain.CLIENT_ID + ".log");
 				response = new MessageHandler(CLIENT_EXIT_OPCODE, "Request Shutdown", SUCCESS_STATUS);
 			}
 		}

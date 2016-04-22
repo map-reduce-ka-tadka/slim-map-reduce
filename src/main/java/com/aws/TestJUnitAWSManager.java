@@ -1,21 +1,12 @@
 package com.aws;
 
-import static org.junit.Assert.*;
-
-import java.io.File;
-import java.util.ArrayList;
+import static org.junit.Assert.assertNotNull;
 
 import org.junit.Test;
 
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ListObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
-import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.main.ClientMain;
-import com.sort.TemperatureInfo;
 
 
 public class TestJUnitAWSManager {
@@ -28,9 +19,9 @@ public class TestJUnitAWSManager {
    public void testendFileToS3() {
 	  // assertEquals(1,1);
 	   
-	   ClientMain.INPUT_BUCKET = "a9output";
-	   ClientMain.INPUT_FOLDER = "output";
-	   ClientMain.OUTPUT_BUCKET = "a9output";
+	   ClientMain.INPUT_BUCKET = "bucketfora2";
+	   ClientMain.INPUT_FOLDER = "input";
+	   ClientMain.OUTPUT_BUCKET = "bucketfora9";
 	   
 	   //File file = new File("abc");
 	 
