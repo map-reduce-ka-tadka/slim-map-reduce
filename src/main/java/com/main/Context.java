@@ -3,6 +3,7 @@ package com.main;
 
 import com.map.Mapper;
 import com.reduce.Reducer;
+import com.utils.FileUtils;
 
 
 public class Context {
@@ -30,7 +31,7 @@ public class Context {
 	}
 
 	public static void write(String key, String value) {
-		
+		FileUtils.useBufferedOutPutStream(key, value, ConfigParams.TASK+"/"+ConfigParams.CURRENT_FILE);
 	}
 	
 	

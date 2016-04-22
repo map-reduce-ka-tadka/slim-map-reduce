@@ -9,6 +9,7 @@ public class Map {
 	public AWSManager AWSConnect;
 	Mapper mapper; 
 	public Context context = new Context();
+	public String currentFile;
 	
 	public Map() throws IllegalAccessException, InstantiationException {
 		this.AWSConnect = new AWSManager();
@@ -17,8 +18,7 @@ public class Map {
 	
 	public void map(int clientID) {
 		AWSConnect.mapAllFiles(clientID,this.mapper,context);
-		AWSConnect.sendFileToS3("", "");
-		
+		AWSConnect.sendFileToS3("", "");		
 		// send response to master finish of map task
 	}
 		
