@@ -1,128 +1,226 @@
 #!/bin/bash
-# Authors: Deepen Mehta, Abhijeet Sharma, Afan Khan, Akshay Raje
-# Start/stop EC2 instances to run Distributed Sort
-# Requires the aws package locally -- sudo apt-get install awscli
-# Requires Java and Maven installed
 #
-# usage: ./automate.sh start {No. of slaves} (spin up EC2 instances, install required software, execute job and download output)
-#        ./automate.sh stop (terminate all EC2 instances to save money)
-#        ./automate.sh sortData (start Distributed Sort remotely and let the nodes coordinate)
+# Authors: Akshay Raje, Afan Khan, Deepen Mehta, Abhijeet Sharma
+#
+# Use this script to automatically create a cluster, run Slim MapReduce jobs and terminate the cluster.
+#
+# Pre-requisites:
+# ===============
+# awscli    (http://docs.aws.amazon.com/cli/latest/userguide/installing.html)
+# Java 8 SE
+# Maven     (https://maven.apache.org/install.html)
+#
+# Step 0:
+# =======
+# Run the following to make this script executable - chmod +x automate.sh
+#
+# Usage:
+# ======
+#  ./automate.sh start {No. of slaves}                (spins up EC2 instances, installs required software and starts the master)
+#  ./automate.sh stop                                 (terminate all EC2 instances to save money)
+#  ./automate.sh deploy {Job JAR} {arguments for JAR} (run Slim MapReduce job in the cluster and wait for the result in output S3 bucket)
 
-# CHANGE THE PARAMETERS BELOW
+# Check for the existence of smr.config file
+current_dir=$(dirname "$BASH_SOURCE")
+if [ ! -f "${current_dir}/smr.config" ];
+then
+   echo "Config file ${current_dir}/smr.config does not exist." >&2
+   exit 1 # Exit the script with an error status
+fi
 
-imageid="ami-fce3c696" # this is an Ubuntu AMI, but you can change it to whatever you want
-master_instance_type="t2.large"
-node_instance_type="m4.xlarge"
-key_name="awsec2" # your keypair name -- http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html
-security_group="mrlite" # your security group -- http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-network-security.html
-key_location="/home/amraje/.aws/awsec2.pem" # your private key -- http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#having-ec2-create-your-key-pair
-user="ubuntu" # the EC2 linux user name
-secretfolder="hideme"
-jarName="DistributedSort.jar"
-port="9090"
-inputBucketName="cs6240sp16"
-inputFolder="climate"
-outputBucketName="a9try"
-outputFolder="output"
-count=$2 # Number of slave nodes excluding master
+# Read in all the parameters from the config file
+source ${current_dir}/smr.config
+
+# Perform validation of necessary config parameters
+if [ -z "$key_location" ];
+then
+    echo "Absolute path to key-pair is not set in smr.config." >&2
+    exit 1 # Exit the script with an error status
+fi
+if [ -z "$security_group" ];
+then
+    echo "EC2 security group is not set in smr.config." >&2
+    exit 1 # Exit the script with an error status
+fi
+if [ -z "$image_id" ];
+then
+    echo "Image Id is required in smr.config to spin up ec2 instances." >&2
+    exit 1 # Exit the script with an error status
+fi
+if [ -z "$user" ];
+then
+    echo "Default EC2 user name must be set in smr.config." >&2
+    exit 1 # Exit the script with an error status
+fi
+if [ -z "$secret_folder" ];
+then
+    echo "Secret hidden folder name for storing key-pairs on EC2 must be specified in smr.config." >&2
+    exit 1 # Exit the script with an error status
+fi
+if [ -z "$master_instance_type" ];
+then
+    echo "Specify an EC2 instance type for master node in smr.config." >&2
+    exit 1 # Exit the script with an error status
+fi
+if [ -z "$node_instance_type" ];
+then
+    echo "Specify an EC2 instance type for slave nodes in smr.config." >&2
+    exit 1 # Exit the script with an error status
+fi
+if [ -z "$port" ];
+then
+    echo "Default port number for Socket communication not specified in smr.config." >&2
+    exit 1 # Exit the script with an error status
+fi
+
+# Retrieve the name of .pem file from the given absolute path
+key_name_with_extension=$(basename "$key_location")
+# Discard the .pem extension
+key_name="${key_name_with_extension%.*}"
 
 build ()
 {
-	mvn clean package
-	cp target/$jarName .
+    # Build slim-map-reduce.jar and copy to working folder for deployment
+    echo "Building slim-map-reduce.jar..."
+	mvn clean package 1> /dev/null && cp target/slim-map-reduce.jar .
+}
+
+start_slaves ()
+{
+    # First argument to this function is the number of slave nodes to spawn
+    local count=$1
+	echo "Starting ${count} slave EC2 instance(s)..."
+	aws ec2 run-instances --image-id ${image_id} --count ${count} --instance-type ${node_instance_type} --key-name ${key_name} --security-groups ${security_group} >> /dev/null
+	# Allow ample time for the EC2 instances to spawn
+	sleep 60
+}
+
+install_software ()
+{
+    # Copy contents of .aws folder to another directory for copying to EC2
+    mkdir -p tempfolder
+	cp -r ~/.aws/* tempfolder
+
+	echo "Installing pre-requisite software on all EC2 instances (this might take a while)... "
+	local ip=$(aws ec2 describe-instances | grep PublicIpAddress | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}")
+	for name in ${ip[@]}; do
+		echo ${name} >> temp.txt
+		ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "sudo add-apt-repository -y ppa:webupd8team/java; sudo apt-get -y update; echo debconf shared/accepted-oracle-license-v1-1 select true | sudo debconf-set-selections; echo debconf shared/accepted-oracle-license-v1-1 seen true | sudo debconf-set-selections; sudo apt-get -y install oracle-java8-installer"
+	    scp -i ${key_location} -o StrictHostKeyChecking=no ${key_location} ${user}"@"${name}":/home/"${user}"/" 1> /dev/null && ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "sudo mkdir -p ."${secret_folder}"; sudo mv "${key_name_with_extension}" ."${secret_folder}"/"
+	    scp -i ${key_location} -o StrictHostKeyChecking=no -r tempfolder ${user}"@"${name}":/home/"${user}"/" 1> /dev/null && ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "sudo chmod 777 tempfolder; sudo mv tempfolder .aws; sudo rm -rf tempfolder"
+	done
+
+	# Erase the tempfolder
+	rm -rf tempfolder
+
+    # Exclude master's public address from the list to get all slave public addresses
+	grep -vf masterPublicAddress.txt temp.txt > slavePublicAddresses.txt
+	rm -rf temp.txt
+
+	# Append the configured port number to master's public address for use in running job JAR
+	local master_ip=`cat masterPublicAddress.txt`
+	rm -rf masterPublicAddress.txt
+	echo ${master_ip}:${port} > masterPublicAddress.txt
+
+    # Notify master's public address and configured port to all the slave nodes
+	for name in ${ip[@]}; do
+        #scp -i ${key_location} -o StrictHostKeyChecking=no masterPrivateAddress.txt ${user}"@"${name}":/home/"${user}"/" 1> /dev/null
+	    scp -i ${key_location} -o StrictHostKeyChecking=no masterPublicAddress.txt ${user}"@"${name}":/home/"${user}"/" 1> /dev/null
+	done
+}
+
+save_master_ip ()
+{
+	echo "Getting private and public IP Addresses of the master... "
+	local masterPrivateip=$(aws ec2 describe-instances | grep PrivateIpAddress | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | uniq)
+	local masterPublicip=$(aws ec2 describe-instances | grep PublicIpAddress | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | uniq)
+	echo ${masterPrivateip} >> masterPrivateAddress.txt
+	echo ${masterPublicip} >> masterPublicAddress.txt
+}
+
+start_master ()
+{
+    echo "Starting master EC2 instance..."
+	aws ec2 run-instances --image-id ${image_id} --count 1 --instance-type ${master_instance_type} --key-name ${key_name} --security-groups ${security_group} >> /dev/null
+	# Allow ample time for the EC2 node to start up
+	sleep 50
+}
+
+check_job_status () {
+    # Use check_job_status to determine if _SUCCESS file has been generated in S3 bucket
+    local buc=$1
+    local fol=$2
+    local comm=$(aws s3 ls s3://$buc/$fol/_SUCCESS | wc -l)
+    if [[ $comm -gt 0 ]];
+    then
+        return 1 # Indicate failure to find _SUCCESS file
+    else
+        return 0 # Indicate success in finding _SUCCESS file
+    fi
+}
+
+wait_for_job_completion () {
+    echo "Waiting for job to complete (this might take a while) ..."
+    # wait_for_job_completion expects S3 bucket name and folder name
+    local bucket=$1
+    local folder=$2
+    while check_job_status $bucket $folder ;
+    do
+        sleep 5 # Try again after 5 seconds
+    done
+    echo "Job completed successfully."
 }
 
 start () 
 {
+    # First argument to this function is the number of slave nodes to spawn
+    local count=$1      # Number of slave nodes excluding master
 	echo "Cleaning old files and temp directories..."
 	rm -rf *.txt
 	rm -rf tempfolder
 	rm -rf output
-	rm -rf $jarName
-	rm -rf finish
-	rm -rf Assignment9_Report.pdf
-	echo "Building project..."
-	build	
-	echo "Starting master EC2 instance..."
-	aws ec2 run-instances --image-id $imageid --count 1 --instance-type $master_instance_type --key-name $key_name --security-groups $security_group >> /dev/null
-	sleep 50
-	getmasterip
-}
-
-getmasterip ()
-{
-	echo "Getting master IP Address... "
-	masterPrivateip=$(aws ec2 describe-instances | grep PrivateIpAddress | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | uniq)
-	masterPublicip=$(aws ec2 describe-instances | grep PublicIpAddress | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | uniq)
-	echo $masterPrivateip >> masterPrivateAddress.txt
-	echo $masterPublicip >> masterPublicAddress.txt
-	startNodes
-}
-
-startNodes ()
-{
-	echo "Starting slave EC2 instances..."
-	aws ec2 run-instances --image-id $imageid --count $count --instance-type $node_instance_type --key-name $key_name --security-groups $security_group >> /dev/null
-	sleep 60
-	getip
-	sortData
-}
-
-getip ()
-{
-	echo "Getting IP Addresses of nodes... "
-	mkdir -p tempfolder
-	cp -r ~/.aws/* tempfolder
-	ip=$(aws ec2 describe-instances | grep PublicIpAddress | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}")
-	for name in ${ip[@]}; do
-		echo $name >> temp.txt
-		ssh -i $key_location -o StrictHostKeyChecking=no $user"@"$name "sudo apt-get -y update; sudo apt-get -y install awscli; sudo apt-get -y install python-software-properties debconf-utils; sudo add-apt-repository -y ppa:webupd8team/java; sudo apt-get -y update; echo debconf shared/accepted-oracle-license-v1-1 select true | sudo debconf-set-selections; echo debconf shared/accepted-oracle-license-v1-1 seen true | sudo debconf-set-selections; sudo apt-get -y install oracle-java8-installer; sudo mkdir -p "$secretfolder
-		scp -i $key_location $key_location $user"@"$name":/home/"$user"/" && ssh -i $key_location -o StrictHostKeyChecking=no $user"@"$name "sudo mkdir -p ."$secretfolder"; sudo mv "$key_name".pem ."$secretfolder"/" 
-		scp -i $key_location -r tempfolder $user"@"$name":/home/"$user"/" && ssh -i $key_location -o StrictHostKeyChecking=no $user"@"$name "sudo mv tempfolder .aws" 
-		scp -i $key_location $jarName $user"@"$name":/home/"$user"/" 
-	done
-	rm -rf tempfolder
-
-	grep -vf masterPublicAddress.txt temp.txt > dataNodesAddresses.txt
-	rm -rf temp.txt
-
-	for name in ${ip[@]}; do
-		scp -i $key_location dataNodesAddresses.txt $user"@"$name":/home/"$user"/"
-		scp -i $key_location masterPrivateAddress.txt $user"@"$name":/home/"$user"/"
-		scp -i $key_location masterPublicAddress.txt $user"@"$name":/home/"$user"/"
-	done
-}
-
-sortData ()
-{
-	masterip=`cat masterPublicAddress.txt`
-	masterprivateip=`cat masterPrivateAddress.txt`
-	echo "Running program on master "$masterip"..."
-		ssh -i $key_location -o StrictHostKeyChecking=no $user"@"$masterip "nohup java -Xms2g -Xmx5g -jar "$jarName" server "$masterprivateip" "$port" "$count" "$inputBucketName" "$inputFolder" "$outputBucketName" "$outputFolder" 1> success.out 2> error.err < /dev/null &"
-	clientList=`cat dataNodesAddresses.txt`
-	for name in ${clientList[@]}; do
-		echo "Running program on node "$name"..."
-		ssh -i $key_location -o StrictHostKeyChecking=no $user"@"$name "nohup java -Xms5g -Xmx10g -jar "$jarName" client "$masterip" "$port" "$count" "$inputBucketName" "$inputFolder" "$outputBucketName" "$outputFolder" 1> success.out 2> error.err < /dev/null &"
-	done
-	time bash checkJobSuccess.sh $outputBucketName $outputFolder
-	echo "Downloading output folder from S3..."
-	aws s3 sync s3://${outputBucketName}/${outputFolder} output
-	echo "Generating report..."
-	Rscript -e "rmarkdown::render('Assignment9_Report.Rmd')"
-}
-
-rebuild ()
-{
+	rm -rf slim-map-reduce.jar
+	rm -rf _SUCCESS
 	build
-	clientList=`cat dataNodesAddresses.txt`
-	echo "$clientList"
-	for name in ${clientList[@]}; do
-		scp -i $key_location $jarName $user"@"$name":/home/"$user"/"
-	done
-	masterip=`cat masterPublicAddress.txt`
-	echo "$masterip"
-	scp -i $key_location $jarName $user"@"$masterip":/home/"$user"/"
+	start_master
+	save_master_ip
+	start_slaves $count
+	install_software
+	echo "Cluster is ready to accept new jobs."
 }
+
+deploy ()
+{
+    local jar_name=$1
+	local master_ip=`cat masterPublicAddress.txt`
+	local master_private_ip=`cat masterPrivateAddress.txt`
+	echo "Starting master "${master_ip}"..."
+		ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${master_ip} "nohup java -Xms2g -Xmx5g -jar "${jar_name}" server "${master_private_ip}" "${port}" "${input_bucket}" "${input_folder}" "${output_bucket}" "${output_folder}" 1> success.out 2> error.err < /dev/null &"
+	local client_list=`cat slavePublicAddresses.txt`
+	for name in ${client_list[@]}; do
+		echo "Running user program on node "$name"..."
+		ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "nohup java -Xms5g -Xmx10g -jar "${jar_name}" client "${master_ip}" "${port}" "${count}" "${input_bucket}" "${input_folder}" "${output_bucket}" "${output_folder}" 1> success.out 2> error.err < /dev/null &"
+	done
+	echo "User job is running in the cluster. Look for _SUCCESS or _ERROR file in the output bucket."
+#	time wait_for_job_completion ${output_bucket} ${output_folder}
+#	echo "Downloading output folder from S3..."
+#	aws s3 sync s3://${output_bucket}/${output_folder} output
+#	echo "Generating report..."
+#	Rscript -e "rmarkdown::render('Final_Report.Rmd')"
+}
+
+#rebuild ()
+#{
+#	build
+#	client_list=`cat slavePublicAddresses.txt`
+#	echo "$client_list"
+#	for name in ${client_list[@]}; do
+#		scp -i $key_location $jar_name $user"@"$name":/home/"$user"/"
+#	done
+#	master_ip=`cat masterPublicAddress.txt`
+#	echo "$master_ip"
+#	scp -i $key_location $jar_name $user"@"$master_ip":/home/"$user"/"
+#}
 
 stop ()
 {
@@ -135,16 +233,13 @@ stop ()
 # "main"
 case "$1" in
 	start)
-		start
+		start $2
 		;;
-	sortData)
-		sortData
+	deploy)
+		deploy ${@:2}
 		;;
 	stop)
 		stop
-		;;
-	rebuild)
-		rebuild
 		;;
 	build)
 		build

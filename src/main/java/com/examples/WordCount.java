@@ -11,7 +11,8 @@ public class WordCount {
 		
 		Context context = new Context();
 		context.setMapperClass(M.class);
-		context.setReducerClass(R.class);		
+		context.setReducerClass(R.class);
+		
 		
 		
 		Mapper mapper = getInstance(Context.mapper); 

@@ -1,0 +1,56 @@
+#!/bin/bash
+# Authors: Akshay Raje, Deepen Mehta, Abhijeet Sharma, Afan Khan
+#
+# This is a template file. Copy this smr.config.template file to smr.config and
+# change the values of parameters.
+#
+# Syntax: KEY_NAME="VALUE"
+#
+# ================================================================================
+# USER MUST SET THE FOLLOWING PARAMETERS
+# ================================================================================
+
+# Absolute path to your EC2 key-pair name -- http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#having-ec2-create-your-key-pair
+# Example: key_location="/home/amraje/.aws/awsec2.pem"
+
+key_location=""
+
+# Your EC2 security group -- http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-network-security.html
+# Example: security_group="mrlite"
+
+security_group=""
+
+# ================================================================================
+# CHANGING THE FOLLOWING PARAMETERS IS OPTIONAL
+# ================================================================================
+
+# EC2 instance type of master node -- https://aws.amazon.com/ec2/instance-types/
+# Recommended value is "t2.large".
+
+master_instance_type="t2.large"
+
+# EC2 instance type of slave nodes -- https://aws.amazon.com/ec2/instance-types/
+# Recommended value is "m4.xlarge".
+
+node_instance_type="m4.xlarge"
+
+# Default port number for Java Socket communication
+
+port="9090"
+
+# ================================================================================
+# LEAVE THE FOLLOWING PARAMETERS UNCHANGED
+# ================================================================================
+
+# image_id should be an Ubuntu AMI, so that all EC2 instances will run Ubuntu.
+# Leave it at the default value if you are not sure what to do.
+
+image_id="ami-fce3c696"
+
+# EC2 default user name
+
+user="ubuntu"
+
+# Name of the hidden folder where your key-pair will be copied on EC2
+
+secret_folder="hideme"

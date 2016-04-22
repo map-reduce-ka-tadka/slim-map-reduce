@@ -12,9 +12,15 @@ public class R extends Reducer{
 	}
 
 	@Override
-	public <T> void reduce(String key, Iterable<T> value, Context context) {
-		// TODO Auto-generated method stub
+	public void reduce(String key, Iterable<String> value, Context context) {
+	
+		int count = 0;
 		
+		for(String s : value) {
+			count = count + 1;
+		}	
+		
+		context.write(key, String.valueOf(count));		
 	}
 
 	@Override
@@ -22,5 +28,7 @@ public class R extends Reducer{
 		// TODO Auto-generated method stub
 		
 	}
+	
+	
 
 }
