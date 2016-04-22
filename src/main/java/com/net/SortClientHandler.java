@@ -23,7 +23,6 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 public class SortClientHandler extends ChannelInboundHandlerAdapter{
 	public SampleSort ss;
 	public static HashMap<String, String> addressMap = new HashMap<String, String>();
-	public static int clientId;
 	static final int SUCCESS_STATUS = 1;
 	static final int WAIT_STATUS = 0;
 	static final int FAILURE_STATUS = -1;
@@ -76,7 +75,7 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 				ClientMain.N_INSTANCES = Integer.parseInt(handshakeMessage[1]);
 				Thread.sleep(6000);
 				SortClient.LOG.info("Sending Client ID to Server.. ");
-				response = new MessageHandler(CLIENT_HANDSHAKE_OPCODE, ClientMain.CLIENT_ID, SUCCESS_STATUS);
+				response = new MessageHandler(CLIENT_HANDSHAKE_OPCODE, ClientMain.CLIENT_ID+"_"+ClientMain.INPUT_PATH+"_"+ClientMain.OUTPUT_PATH, SUCCESS_STATUS);
 			}
 			else if (requestCodeFromServer == MAP_OPCODE){
 				SortClient.LOG.info("Received AddressMap from Server: {}", messageFromServer);
@@ -85,14 +84,21 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 				String[] addList = messageFromServer.replace("[", "").replace("]", "").replace("/", "").split(",");
 				for (String elem : addList){
 					String[] elemList = elem.split("=");
-					if (elemList[0].equals(ClientMain.CLIENT_ID)){
+					System.out.println("cid: " + ClientMain.CLIENT_ID);
+					System.out.println("val0.1: "+elemList);
+					System.out.println("val1: "+elemList[1]);
+					System.out.println("val: " + elemList[1].split("\t")[0]);
+					if (elemList[0].trim().equals(ClientMain.CLIENT_ID)){
 						ClientMain.CLIENT_NUM = Integer.parseInt(elemList[1].split("\t")[0]);
 					}
 					addressMap.put(elemList[0], elemList[1].split("\t")[1]);
 				}
 				SortClient.LOG.info("[START MAP PHASE] => Map");
 				Map m = new Map();
-				FileUtils.createDir(ClientMain.JOB_ID + "/" + "_temp" + "/" + "map");
+				ClientMain.MAP_PATH = ClientMain.TEMP_PATH + "/" + "map";
+				FileUtils.createDir(ClientMain.MAP_PATH);
+				//FileUtils.createDir(ClientMain.JOB_ID + "/" + "_temp" + "/" + "map");
+				System.out.println("In client, map: " + ClientMain.CLIENT_NUM);
 				m.map(ClientMain.CLIENT_NUM);
 				SortClient.LOG.info("[END MAP PHASE]  => Map");
 				
@@ -102,6 +108,8 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 			else if (requestCodeFromServer == SORT_READ_AND_SAMPLE_DATA_OPCODE){
 				SortClient.LOG.info("Received Distributed Sort from Server: {}", messageFromServer);
 				SortClient.LOG.info("[START SORT PHASE 1] => Read, Sort and Sample");
+				ClientMain.SORT_PATH = ClientMain.TEMP_PATH + "/" + "sort";
+				FileUtils.createDir(ClientMain.SORT_PATH);
 				String clientSamples = ss.readAndSampleData(ClientMain.CLIENT_NUM);
 				SortClient.LOG.info("[END SORT PHASE 1]  => Read, Sort and Sample");
 				SortClient.LOG.info("Requesting Global Pivots from Server");
@@ -118,7 +126,7 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 			else if (requestCodeFromServer == SORT_MERGE_PARTITION_OPCODE){
 				SortClient.LOG.info("Code: {}, Message received: {}", requestCodeFromServer, messageFromServer);
 				SortClient.LOG.info("[START SORT PHASE 4] => Merge Data");
-				ss.phaseFour(clientId);
+				ss.phaseFour(ClientMain.CLIENT_NUM);
 				SortClient.LOG.info("[END SORT PHASE 4] => Merge Data");
 				SortClient.LOG.info("Requesting to Start Reducer Step");
 				SortClient.LOG.info("Requesting server to shutdown Client");
@@ -126,9 +134,12 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 			}
 			else if (requestCodeFromServer == REDUCE_OPCODE){
 				SortClient.LOG.info("Code: {}, Message received: {}", requestCodeFromServer, messageFromServer);
+				ClientMain.CURRENT_OPCODE = REDUCE_OPCODE;
 				SortClient.LOG.info("[START REDUCE PHASE] => Reduce");
 				Reduce r = new Reduce();
-				FileUtils.createDir(ClientMain.TEMP_PATH + "/" + "reduce");
+				ClientMain.LOCAL_OUTPUT_PATH = ClientMain.OUTPUT_FOLDER;
+				FileUtils.createDir(ClientMain.LOCAL_OUTPUT_PATH);
+				//FileUtils.createDir(ClientMain.TEMP_PATH + "/" + "reduce");
 				r.reduce(ClientMain.CLIENT_NUM);
 				SortClient.LOG.info("[END REDUCE PHASE] => Reduce");
 				SortClient.LOG.info("Requesting server to shutdown Client");

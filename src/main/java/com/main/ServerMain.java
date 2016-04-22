@@ -12,16 +12,20 @@ import com.utils.FileUtils;
  *
  */
 public class ServerMain {
-
+	// Initialized by Server
 	public static String SERVER_ADDRESS;
 	public static int SERVER_PORT;
 	public static int N_INSTANCES;
+	
 	public static String INPUT_PATH;
 	public static String OUTPUT_PATH;
+	public static String OUTPUT_BUCKET;
+	public static String OUTPUT_FOLDER;
 	public static String JOB_ID;
 	public static String CURRENT_TASK;
 	public static String LOGS_PATH;
 	public static String TEMP_PATH;
+	
 	/**
 	 * Sets the Server Parameters.
 	 * @param params
@@ -30,7 +34,7 @@ public class ServerMain {
 		SERVER_ADDRESS = params[0];
 		SERVER_PORT = Integer.parseInt(params[1]);
 		N_INSTANCES = Integer.parseInt(params[2]);
-		JOB_ID = UUID.randomUUID().toString();
+		JOB_ID = "JOB_" + UUID.randomUUID().toString();
 		LOGS_PATH = "logs";
 		TEMP_PATH = JOB_ID + "/" + "_temp";
 		// create temp directory for intermediate files and logs
