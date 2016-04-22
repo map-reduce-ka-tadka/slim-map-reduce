@@ -1,8 +1,9 @@
 # Mac OS related folder
 .DS_Store
 
-# Ignore the config file
+# Ignore config files
 smr.config
+masterPublicAddress.txt
 
 # Eclipse related folder
 .classpath

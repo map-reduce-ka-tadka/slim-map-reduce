@@ -1,6 +1,8 @@
 package com.main;
 
 
+import java.io.IOException;
+
 import com.map.Mapper;
 import com.net.SortClient;
 import com.reduce.Reducer;
@@ -32,14 +34,15 @@ public class Context {
 	}
 
 	public static void write(String key, String value) {
-		FileUtils.useBufferedOutPutStream(key, value, ClientMain.CURRENT_OPCODE + "/"+ClientMain.CURRENT_FILE);
+		String filePath = ClientMain.CURRENT_OPCODE == 1 ? ClientMain.MAP_PATH : ClientMain.LOCAL_OUTPUT_PATH;
+		FileUtils.useBufferedOutPutStream(key, value, filePath + "/" + ClientMain.CLIENT_NUM + "_" + ClientMain.CURRENT_FILE);
 	}
 	
-	public void jobWaitCompletionTrue() {
-		String args[] = new String[4];
+	public void jobWaitCompletionTrue() throws NumberFormatException, IOException {
+		String args[] = new String[2];
 		args[0] = Context.inputPath;
 		args[1] = Context.outputPath;
-		//ClientMain.run(args);
+		ClientMain.run(args);
 	}
 	
 	

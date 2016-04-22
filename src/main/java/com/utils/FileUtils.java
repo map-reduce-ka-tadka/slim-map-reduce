@@ -3,6 +3,9 @@ package com.utils;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.List;
+
+import com.sort.SortObject;
 
 public class FileUtils {
 
@@ -25,6 +28,47 @@ public class FileUtils {
 			}
 		}
 	}
+	
+	public static void writeByKey(String value, String filePath) {
+		FileOutputStream bout = null;
+		try {
+			bout = new FileOutputStream(filePath, true);			
+			String line = value;
+			line += System.getProperty("line.separator");
+			byte[] bytes = line.getBytes();
+			bout.write(bytes);
+		} catch (IOException e) {
+		} finally {
+			if (bout != null) {
+				try {
+					bout.close();
+				} catch (Exception e) {
+				}
+			}
+		}
+	}
+	
+	public static void useBufferedOutPutStream(List<SortObject> content, String filePath) {
+		FileOutputStream bout = null;
+		try {
+			bout = new FileOutputStream(filePath, true);
+			for (SortObject t : content) {
+				String line = t.getKey() + "\t" + t.getValue();
+				line += System.getProperty("line.separator");
+				byte[] bytes = line.getBytes();
+				bout.write(bytes);
+			}
+		} catch (IOException e) {
+		} finally {
+			if (bout != null) {
+				try {
+					bout.close();
+				} catch (Exception e) {
+				}
+			}
+		}
+	}
+	
 
 	public static void createDir(String directoryName){
 		File dir = new File(String.valueOf(directoryName));
