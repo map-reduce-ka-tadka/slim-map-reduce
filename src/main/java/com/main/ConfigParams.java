@@ -7,6 +7,7 @@ package com.main;
 
 public class ConfigParams {
 
+	public static  String TASK;
 	public static String TYPE;	
 	public static String MASTER_ADDRESS;
 	public static int PORT;
@@ -15,6 +16,7 @@ public class ConfigParams {
 	public static String INPUT_FOLDER;
 	public static String OUTPUT_BUCKET;
 	public static String OUTPUT_FOLDER;
+	public static String CURRENT_FILE;
 
 	public static void setParams(String[] params) {
 		TYPE = params[0];
