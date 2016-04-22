@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -95,7 +96,18 @@ public class SampleSort {
 			HashMap<String, ArrayList<SortObject>> dataMap = new HashMap<String, ArrayList<SortObject>>();
 
 			for (SortObject t : sortRecords) SortObject.upsertData(dataMap, t);
-			TreeMap<String, ArrayList<SortObject>> sortedMap = new TreeMap<String, ArrayList<SortObject>>(String.CASE_INSENSITIVE_ORDER);
+			//TreeMap<String, ArrayList<SortObject>> sortedMap = new TreeMap<String, ArrayList<SortObject>>(String.CASE_INSENSITIVE_ORDER);
+			Comparator<String> stringComparator = new Comparator<String>() {
+		        @Override public int compare(String s1, String s2) {
+		        	if (s1.equalsIgnoreCase(s2)){
+		        		return s1.compareTo(s2);
+		        	}
+		        	else{
+		        		return s1.compareToIgnoreCase(s2);
+		        	}
+		        }           
+		    };
+			TreeMap<String, ArrayList<SortObject>> sortedMap = new TreeMap<String, ArrayList<SortObject>>(stringComparator);
 			for (String key: dataMap.keySet()){
 				sortedMap.put(key, dataMap.get(key));
 			}
