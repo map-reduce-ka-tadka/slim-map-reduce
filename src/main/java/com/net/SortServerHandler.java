@@ -4,6 +4,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -96,13 +97,22 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 	public void channelRead(ChannelHandlerContext ctx, Object msg) {
 		//SortServer.LOG.info("Reading Channel from: {}", ctx.channel().remoteAddress());
 		MessageHandler message = (MessageHandler) msg;
-		SortServer.LOG.info("In Server, Received message: {}", message.toString());
+		SortServer.LOG.info("In Server, Received message: {}, WorldState: {}", message.toString(), worldState);
 		int clientCompletionCode = message.getCode();
 		String clientMessage = message.getMessage();		
 		int clientStatus = message.getStatus();
 
 		if (clientStatus == FAILURE_STATUS){
-			ctx.close();
+			SortServer.LOG.info("Failure from Client.Shutting Down Client and Creating Error File.");
+			try {
+				FileWriter fw = new FileWriter("_ERROR", false);
+				fw.close();
+				new AWSManager().sendFileToS3("_ERROR", ServerMain.OUTPUT_FOLDER + "/_ERROR");
+				ctx.close();
+			} 
+			catch (IOException e) {
+				e.printStackTrace();
+			}			
 		}
 		else{
 			if (worldState == WORLD_STATE_START){
@@ -111,9 +121,16 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 			}
 			else if (clientCompletionCode == (worldState - 1)){
 				if (clientCompletionCode == CLIENT_HANDSHAKE_OPCODE){
-					SortClient.LOG.info("ClientId received from Client: {}", message.toString());
+					SortClient.LOG.info("ClientId & input/output params received from Client: {}", message.toString());
+					String[] clientMessageArr = clientMessage.split("_");
+					String clientId = clientMessageArr[0];
+					ServerMain.INPUT_PATH = clientMessageArr[1];
+					ServerMain.OUTPUT_PATH = clientMessageArr[2];
+					String[] outputPathSplit = ServerMain.INPUT_PATH.split("/");
+					ServerMain.OUTPUT_BUCKET = outputPathSplit[2];
+					ServerMain.OUTPUT_FOLDER = StringUtils.join(Arrays.asList(outputPathSplit).subList(3, outputPathSplit.length), "/");
 					if (!addressMap.containsKey(clientMessage)){
-						addressMap.put(clientMessage, counter + "\t" + ctx.channel().remoteAddress().toString());
+						addressMap.put(clientId, counter + "\t" + ctx.channel().remoteAddress().toString());
 						counter += 1;
 					}
 					/*if (addressMap.size() == ServerMain.N_INSTANCES){
@@ -138,11 +155,12 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 					HashSet<String> hs = stateMap.get(clientCompletionCode);
 					hs.add(ctx.channel().remoteAddress().toString());
 					stateMap.put(clientCompletionCode, hs);
+					System.out.println("stateMap: " + stateMap.entrySet().toString());
 					if (hs.size() == ServerMain.N_INSTANCES){
 						// All clients have completed this step.
 						// Increment World State and Proceed with next step
 						if (clientCompletionCode == CLIENT_HANDSHAKE_OPCODE){
-							worldState += 1;
+							//worldState += 1;
 						}
 						if (clientCompletionCode == SORT_READ_AND_SAMPLE_DATA_OPCODE) {
 							// Samples from all clients received, Find pivots.
@@ -166,6 +184,7 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 					HashSet<String> hs = new HashSet<String>();
 					hs.add(ctx.channel().remoteAddress().toString());
 					stateMap.put(clientCompletionCode, hs);
+					System.out.println("stateMap: " + stateMap.entrySet().toString());
 					ctx.writeAndFlush(new MessageHandler(clientCompletionCode, clientMessage, WAIT_STATUS));
 				}  
 			}
@@ -187,7 +206,7 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 			break;
 		case MAP_OPCODE:
 			SortServer.LOG.info("Map Complete. Code: {}, Message: {}", code, message); 			
-			result = new MessageHandler(SORT_READ_AND_SAMPLE_DATA_OPCODE, "Start Map", SUCCESS_STATUS);
+			result = new MessageHandler(SORT_READ_AND_SAMPLE_DATA_OPCODE, "Start Sort", SUCCESS_STATUS);
 			ctx.writeAndFlush(result);
 			break;
 		case SORT_READ_AND_SAMPLE_DATA_OPCODE: 
@@ -215,7 +234,7 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 				try {
 					FileWriter fw = new FileWriter("_SUCCESS", false);
 					fw.close();
-					new AWSManager().sendFileToS3("_SUCCESS", ClientMain.OUTPUT_PATH + "/_SUCCESS");						
+					new AWSManager().sendFileToS3("_SUCCESS", ServerMain.OUTPUT_FOLDER + "/_SUCCESS");						
 				} 
 				catch (IOException e) {
 					e.printStackTrace();

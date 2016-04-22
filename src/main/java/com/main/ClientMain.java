@@ -29,10 +29,14 @@ public class ClientMain {
 	
 	// Initialized by Server
 	public static String JOB_ID;
-	public static int CLIENT_NUM;
+	public static Integer CLIENT_NUM;
 	public static int N_INSTANCES;
 	public static int CURRENT_OPCODE;
 	public static String TEMP_PATH;
+	public static String MAP_PATH;
+	public static String SORT_PATH;
+	public static String LOCAL_OUTPUT_PATH;
+	public static String REDUCE_PATH;
 	
 	public static String CURRENT_FILE;
 	public static String INPUT_BUCKET;

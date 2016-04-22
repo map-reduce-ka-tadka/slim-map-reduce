@@ -7,13 +7,11 @@
 package com.sort;
 
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
@@ -22,11 +20,13 @@ import org.apache.commons.lang3.StringUtils;
 import com.aws.AWSManager;
 import com.main.ClientMain;
 import com.main.ServerMain;
+import com.utils.FilePartitioner;
+import com.utils.FileUtils;
 
 
 public class SampleSort {
 	public AWSManager AWSConnect;
-	public ArrayList<TemperatureInfo> tempRecords;
+	public ArrayList<SortObject> sortRecords;
 
 	public SampleSort() {
 		this.AWSConnect = new AWSManager();
@@ -35,23 +35,23 @@ public class SampleSort {
 	public String readAndSampleData(int clientId) throws IOException{
 		/* Start of Phase 1 (Read, Sort and Sample Local Data) (Run by Client)  */		
 		// fetch given files and store in Client Memory
-		this.tempRecords = this.AWSConnect.getAllFiles(clientId);
+		this.sortRecords = this.AWSConnect.getAllFiles(clientId);
 		// sort data
-		Collections.sort(this.tempRecords, new TemperatureComparator());
+		Collections.sort(this.sortRecords, new SortComparator());
 		// sample data
-		int n = this.tempRecords.size() * ClientMain.N_INSTANCES;
+		int n = this.sortRecords.size() * ClientMain.N_INSTANCES;
 		System.out.println("Total Records Read: " + n);
 		int p = ClientMain.N_INSTANCES;
 		int w = n / (p * p);
 		System.out.println("n: " + n + " p: " + p + " w: " + w);
-		String samples = getSamples(this.tempRecords, w, p);        
+		String samples = getSamples(this.sortRecords, w, p);        
 		return samples;
 	}
 
-	public String getSamples(ArrayList<TemperatureInfo> tempRecords, int w, int p) {
-		TreeSet<Double> regularSample = new TreeSet<Double>();
+	public String getSamples(ArrayList<SortObject> sortRecords, int w, int p) {
+		TreeSet<String> regularSample = new TreeSet<String>();
 		for (int i = 0; i <= (p - 1) * w; i = i + w) {
-			regularSample.add(tempRecords.get(i).getTemperature());
+			regularSample.add(sortRecords.get(i).getKey());
 		}
 		System.out.println("Samples size: " + regularSample.size());
 		String samples = StringUtils.join(regularSample.toArray(),",");
@@ -63,14 +63,14 @@ public class SampleSort {
 		/* Start of Phase 2 : Find Pivots (Run by Server) */
 		String pivots="";
 		if (concatSamples.length() > 0) {
-			Double[] sampleArray=new ArrayList<Double>() {/**
+			String[] sampleArray=new ArrayList<String>() {/**
 			 * 
 			 */
 				private static final long serialVersionUID = 1L;
 
 				{
 					for (String sample :  concatSamples.split(",")) 
-						add(new Double(sample));}}.toArray(new Double[concatSamples.split(",").length]);
+						add(new String(sample));}}.toArray(new String[concatSamples.split(",").length]);
 						int rho = ServerMain.N_INSTANCES / 2;
 						Arrays.sort(sampleArray);
 						for(int i = ServerMain.N_INSTANCES; i <= (ServerMain.N_INSTANCES*(ServerMain.N_INSTANCES-1)) + rho; i = i+ServerMain.N_INSTANCES) {
@@ -82,67 +82,61 @@ public class SampleSort {
 
 	public void partitionAndUploadData(String pivots, int ClientId){
 		/* Start of Phase 3 : Partition and Exchange (Run by Client) */
-		Double[] pivotList = new ArrayList<Double>() {/**
-		 * 
-		 */
+		String[] pivotList = new ArrayList<String>() {
+			/**
+			 * 
+			 */
 			private static final long serialVersionUID = 1L;
 
 			{
-				for (String pivot :  pivots.split(",")) add(new Double(pivot));
-			}}.toArray(new Double[pivots.split(",").length]);			
+				for (String pivot :  pivots.split(",")) add(new String(pivot));
+			}}.toArray(new String[pivots.split(",").length]);			
 			System.out.println("Pivots: " + pivotList.length);		
-			HashMap<Double, ArrayList<TemperatureInfo>> dataMap = new HashMap<Double, ArrayList<TemperatureInfo>>();
+			HashMap<String, ArrayList<SortObject>> dataMap = new HashMap<String, ArrayList<SortObject>>();
 
-			for (TemperatureInfo t : tempRecords) TemperatureInfo.upsertData(dataMap, t);
-			TreeMap<Double, ArrayList<TemperatureInfo>> sortedMap = new TreeMap<Double, ArrayList<TemperatureInfo>>(dataMap);
-			tempRecords = null;
+			for (SortObject t : sortRecords) SortObject.upsertData(dataMap, t);
+			TreeMap<String, ArrayList<SortObject>> sortedMap = new TreeMap<String, ArrayList<SortObject>>(String.CASE_INSENSITIVE_ORDER);
+			for (String key: dataMap.keySet()){
+				sortedMap.put(key, dataMap.get(key));
+			}
+			sortRecords = null;
 			dataMap = null;        
-			//System.out.println("Unique Keys(sorted): " + sortedMap.keySet().size());
+			System.out.println("sortedMap: " + sortedMap.entrySet().toString());
 			int i = 0;
-			for (Double key : sortedMap.keySet()) {
+			
+			for (String key : sortedMap.keySet()) {
 				if (i < pivotList.length) {
-					if (key > pivotList[i]) {
-						String uploadFileName =  String.valueOf(i) + "_" + ClientId;
-						String ec2FileName =  String.valueOf(i) + "/" + ClientId;
+					//if (key > pivotList[i]) {
+					System.out.println("key: " + key + " pivot: " + pivotList[i] + " compare: " + key.compareTo(pivotList[i]));
+					if (key.compareToIgnoreCase(pivotList[i]) > 0) {
+						String uploadFileName =  ClientMain.SORT_PATH + "/" + String.valueOf(i) + "_" + ClientId;
+						String ec2FileName =  ClientMain.SORT_PATH + "/" + String.valueOf(i) + "/" + ClientId;
+						System.out.println("Sending to S3: " + uploadFileName);
 						this.AWSConnect.sendFileToS3(uploadFileName, ec2FileName); 
 						i++;
 					}
 				}
-				useBufferedOutPutStream(sortedMap.get(key), String.valueOf(i) + "_" + ClientId);
+				FileUtils.useBufferedOutPutStream(sortedMap.get(key), ClientMain.SORT_PATH + "/" + String.valueOf(i) + "_" + ClientId);
 			}
 			// for the last partition
-			String uploadFileName =  String.valueOf(i) + "_" + ClientId;
-			String ec2FileName =  String.valueOf(i) + "/" + ClientId;
+			String uploadFileName =  ClientMain.SORT_PATH + "/" + String.valueOf(i) + "_" + ClientId;
+			String ec2FileName =  ClientMain.SORT_PATH + "/" + String.valueOf(i) + "/" + ClientId;
+			System.out.println("Sending to last S3: " + uploadFileName);
 			this.AWSConnect.sendFileToS3(uploadFileName, ec2FileName); 
 
 	}
 
-	public void useBufferedOutPutStream(List<TemperatureInfo> content, String filePath) {
-		FileOutputStream bout = null;
-		try {
-			bout = new FileOutputStream(filePath, true);
-			for (TemperatureInfo t : content) {
-				String line = t.toString();
-				line += System.getProperty("line.separator");
-				byte[] bytes = line.getBytes();
-				bout.write(bytes);
-			}
-		} catch (IOException e) {
-		} finally {
-			if (bout != null) {
-				try {
-					bout.close();
-				} catch (Exception e) {
-				}
-			}
-		}
-	}
 	public void phaseFour(int clientId) throws FileNotFoundException, IOException{
 		/* Start of Phase 4 (Merge Partitions) */
 		String concatFileName = this.AWSConnect.readFilesfromS3andConcat(clientId);
-		String s3name = concatFileName.replace(clientId + "/", "");
+		System.out.println("Client: " + ClientMain.CLIENT_NUM + " has completed concatenating files.Starting Partitioner..");
+		ClientMain.REDUCE_PATH = ClientMain.TEMP_PATH + "/" + "reduce";
+		FileUtils.createDir(ClientMain.REDUCE_PATH);
+		FilePartitioner.partition(concatFileName);
+		System.out.println("Partitioner complete");
+		//String s3name = concatFileName.replace(clientId + "/", "");
 		// write to s3 appending with Sort Node Name
-		this.AWSConnect.sendFileToS3(concatFileName, ClientMain.OUTPUT_FOLDER + "/" + s3name);
+		///this.AWSConnect.sendFileToS3(concatFileName, ClientMain.OUTPUT_FOLDER + "/" + s3name);
 		/* End of Phase 4 */
 	}
 
