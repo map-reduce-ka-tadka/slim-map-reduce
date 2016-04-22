@@ -10,6 +10,11 @@
 # USER MUST SET THE FOLLOWING PARAMETERS
 # ================================================================================
 
+# Provide the path to slim-map-reduce.jar (classpath)
+# Example: /home/amraje/Documents/slim-map-reduce.jar
+
+SLIM_MAP_REDUCE_CLASSPATH=""
+
 # Absolute path to your EC2 key-pair name -- http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#having-ec2-create-your-key-pair
 # Example: key_location="/home/amraje/.aws/awsec2.pem"
 

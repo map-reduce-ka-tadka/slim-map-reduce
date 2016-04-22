@@ -16,6 +16,7 @@
 #
 # Usage:
 # ======
+#  ./automate.sh build                                (builds slim-map-reduce.jar from source)
 #  ./automate.sh start {No. of slaves}                (spins up EC2 instances, installs required software and starts the master)
 #  ./automate.sh stop                                 (terminate all EC2 instances to save money)
 #  ./automate.sh deploy {Job JAR} {arguments for JAR} (run Slim MapReduce job in the cluster and wait for the result in output S3 bucket)
@@ -32,6 +33,11 @@ fi
 source ${current_dir}/smr.config
 
 # Perform validation of necessary config parameters
+if [ -z "$SLIM_MAP_REDUCE_CLASSPATH" ];
+then
+    echo "Absolute path to slim-map-reduce.jar is not set in smr.config." >&2
+    exit 1 # Exit the script with an error status
+fi
 if [ -z "$key_location" ];
 then
     echo "Absolute path to key-pair is not set in smr.config." >&2
@@ -83,7 +89,6 @@ cleanup ()
     echo "Cleaning up..."
     rm -rf _work
 	rm -rf tempfolder
-	rm -rf slim-map-reduce.jar
 }
 
 build ()
@@ -93,7 +98,7 @@ build ()
 	mvn clean package 1> /dev/null && cp target/slim-map-reduce.jar .
 	if [[ $? != 0 ]];
 	then
-		echo "Error in building slim-map-reduce.jar. Abandoning cluster initialization."
+		echo "Error in building slim-map-reduce.jar. Existing slim-map-reduce.jar will remain untouched."
 		cleanup
 		exit 1
 	fi
@@ -186,8 +191,9 @@ install_software ()
 		    stop
 		    exit 1
 		fi
-	    scp -i ${key_location} -o StrictHostKeyChecking=no ${key_location} ${user}"@"${name}":/home/"${user}"/" 1> /dev/null && ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "sudo mkdir -p ."${secret_folder}"; sudo mv "${key_name_with_extension}" ."${secret_folder}"/"
-	    scp -i ${key_location} -o StrictHostKeyChecking=no -r tempfolder ${user}"@"${name}":/home/"${user}"/" 1> /dev/null && ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "sudo chmod 777 tempfolder; sudo mv tempfolder .aws; sudo rm -rf tempfolder"
+	    scp -i ${key_location} -o StrictHostKeyChecking=no ${key_location} ${user}"@"${name}":/home/${user}/" 1> /dev/null && ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "sudo mkdir -p .${secret_folder}; sudo mv ${key_name_with_extension} .${secret_folder}/"
+	    scp -i ${key_location} -o StrictHostKeyChecking=no -r tempfolder ${user}"@"${name}":/home/${user}/" 1> /dev/null && ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "sudo chmod 777 tempfolder; sudo mv tempfolder .aws; sudo rm -rf tempfolder"
+	    scp -i ${key_location} -o StrictHostKeyChecking=no ${SLIM_MAP_REDUCE_CLASSPATH} ${user}"@"${name}":/home/${user}/" 1> /dev/null
 	done
 
 	# Erase the tempfolder
@@ -211,7 +217,7 @@ install_software ()
 		    stop
 		    exit 1
 		fi
-		scp -i ${key_location} -o StrictHostKeyChecking=no _work/masterPublicAddress.txt ${user}"@"${name}":/home/"${user}"/" 1> /dev/null
+		scp -i ${key_location} -o StrictHostKeyChecking=no _work/masterPublicAddress.txt ${user}"@"${name}":/home/${user}/" 1> /dev/null
 	done
 }
 
@@ -251,11 +257,9 @@ start ()
 	echo "Cleaning old files and temp directories..."
 	rm -rf _work
 	rm -rf tempfolder
-	rm -rf slim-map-reduce.jar
 	rm -rf output
 	rm -rf _SUCCESS
 	mkdir -p _work
-	build
 	start_master
 	save_master_ip
 	start_slaves $count
@@ -271,18 +275,34 @@ deploy ()
 	echo "Deploying user job in the cluster..."
 	echo "============================================================================================"
     local jar_name=$1
+    local other_params=${@:2}
+    echo ${other_params}
 	local master_ip=$(cat _work/masterPublicAddress.txt)
 	local master_private_ip=$(cat _work/masterPrivateAddress.txt)
-	echo "Starting master "${master_ip}"..."
-		ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${master_ip} "nohup java -Xms2g -Xmx5g -jar "${jar_name}" server "${master_private_ip}" "${port}" "${input_bucket}" "${input_folder}" "${output_bucket}" "${output_folder}" 1> success.out 2> error.err < /dev/null &"
 	local client_list=$(cat _work/slavePublicAddresses.txt)
+	local no_of_slaves=$(wc -l < _work/slavePublicAddresses.txt)
+	echo "Starting master at "${master_ip}"..."
+	ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${master_ip} "nohup java -Xms2g -Xmx5g -jar slim-map-reduce.jar ${master_private_ip} ${port} ${no_of_slaves} 1> success.out 2> error.err < /dev/null &"
+	if [[ $? != 0 ]];
+	then
+	    echo "Could not initialize user program at the master node. Abandoning deployment."
+	    exit 1
+	fi
 	for name in ${client_list[@]}; do
 		echo "Running user program on node "$name"..."
-		ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "nohup java -Xms5g -Xmx10g -jar "${jar_name}" client "${master_ip}" "${port}" "${count}" "${input_bucket}" "${input_folder}" "${output_bucket}" "${output_folder}" 1> success.out 2> error.err < /dev/null &"
+		ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "nohup java -Xms5g -Xmx10g -jar ${jar_name} ${other_params} 1> success.out 2> error.err < /dev/null &"
+		if [[ $? != 0 ]];
+	    then
+	        echo "Could not submit job to a slave node. Abandoning deployment."
+	        echo "================================================================================================================================"
+	        echo "User program might still be running at master and other slave EC2 instances. Stop user program on all machines and deploy again."
+	        echo "================================================================================================================================"
+	        exit 1
+	    fi
 	done
-	echo "============================================================================================"
-	echo "User job is running in the cluster. Look for _SUCCESS or _ERROR file in the output bucket."
-	echo "============================================================================================"
+	echo "========================================================================================================="
+	echo "User job is running in the cluster. Check for _SUCCESS or _ERROR file in the output folder after a while."
+	echo "========================================================================================================="
 }
 
 # Starting point for the Bash script
