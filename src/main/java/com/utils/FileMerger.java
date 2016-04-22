@@ -10,7 +10,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-public class CombineFiles
+public class FileMerger
 {
 	public static void merger (String currentFile, String previousFile, String mergedFile) throws IOException
 	{
