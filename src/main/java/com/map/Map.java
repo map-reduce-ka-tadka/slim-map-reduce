@@ -13,12 +13,12 @@ public class Map {
 	
 	public Map() throws IllegalAccessException, InstantiationException {
 		this.AWSConnect = new AWSManager();
-		this.mapper = GenericFactory.getInstance(Context.mapper);
+		//this.mapper = GenericFactory.getInstance(Context.mapper);
 	}
 	
 	public void map(int clientID) {
 		AWSConnect.mapAllFiles(clientID,this.mapper,context);
-		AWSConnect.sendFileToS3("", "");		
+		//AWSConnect.sendFileToS3("", "");
 		// send response to master finish of map task
 	}
 		

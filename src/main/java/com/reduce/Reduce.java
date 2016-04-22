@@ -12,13 +12,12 @@ public class Reduce {
 	
 	public Reduce() throws IllegalAccessException, InstantiationException {
 		this.AWSConnect = new AWSManager();
-		this.reducer = GenericFactory.getInstance(Context.reducer);
+		//this.reducer = GenericFactory.getInstance(Context.reducer);
 	}
 	
 	public void reduce(int clientID) {
-		AWSConnect.reduceKey(clientID,this.reducer,context);
-		
-		AWSConnect.sendFileToS3("", "");
+		AWSConnect.reduceKey(clientID,this.reducer,context);		
+		//AWSConnect.sendFileToS3("", "");
 		
 		// send response to master finish of reduce task
 	}

@@ -5,7 +5,8 @@ import java.net.InetSocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.main.ConfigParams;
+import com.main.ClientMain;
+import com.main.ServerMain;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
@@ -26,13 +27,11 @@ import io.netty.util.internal.logging.Slf4JLoggerFactory;
  */
 public class SortServer {
 	public static final Logger LOG = LoggerFactory.getLogger("server");
-	
 	/**
 	 * Starts the server.
 	 * @throws InterruptedException
 	 */
 	public static void start() throws InterruptedException {
-		
 		InternalLoggerFactory.setDefaultFactory(new Slf4JLoggerFactory());
 		// configure the server
 		EventLoopGroup bossGroup = new NioEventLoopGroup(1);
@@ -40,23 +39,21 @@ public class SortServer {
 		try {
 			ServerBootstrap boot = new ServerBootstrap();
 			boot.group(bossGroup, workerGroup)
-				.channel(NioServerSocketChannel.class)
-				.childHandler(new ChannelInitializer<SocketChannel>() {
-					@Override
-					public void initChannel(SocketChannel sChannel) throws Exception {
-						sChannel.pipeline().addLast(new SortServerInitializer());
-					}
-				})
-				.option(ChannelOption.SO_BACKLOG, 128)
-				//.childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 32 * 1024);
-				//.childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);   
-				.childOption(ChannelOption.SO_KEEPALIVE, true)
-				.childOption(ChannelOption.TCP_NODELAY, true);
-			
+			.channel(NioServerSocketChannel.class)
+			.childHandler(new ChannelInitializer<SocketChannel>() {
+				@Override
+				public void initChannel(SocketChannel sChannel) throws Exception {
+					sChannel.pipeline().addLast(new SortServerInitializer());
+				}
+			})
+			.option(ChannelOption.SO_BACKLOG, 128)
+			//.childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 32 * 1024);
+			//.childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);   
+			.childOption(ChannelOption.SO_KEEPALIVE, true)
+			.childOption(ChannelOption.TCP_NODELAY, true);
 			// Start the server.
-			ChannelFuture f = boot.bind(new InetSocketAddress(ConfigParams.MASTER_ADDRESS, ConfigParams.PORT)).sync();
-			LOG.info("Server started at {}:{}", ConfigParams.MASTER_ADDRESS, ConfigParams.PORT);
-			
+			ChannelFuture f = boot.bind(new InetSocketAddress(ServerMain.SERVER_ADDRESS, ServerMain.SERVER_PORT)).sync();
+			LOG.info("Server started at {}:{}, JobId: {}", ServerMain.SERVER_ADDRESS, ServerMain.SERVER_PORT, ServerMain.JOB_ID);
 			// Wait until the server socket is closed.
 			f.channel().closeFuture().sync();			
 		} 
@@ -73,8 +70,4 @@ public class SortServer {
 			LOG.info("Server Exit.");
 		}
 	}
-	
-	/*public static void main(String[] args) throws Exception {
-		SortServer.start();
-	}*/
 }

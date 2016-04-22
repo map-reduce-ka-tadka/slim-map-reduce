@@ -31,7 +31,7 @@ public class Context {
 	}
 
 	public static void write(String key, String value) {
-		FileUtils.useBufferedOutPutStream(key, value, ConfigParams.TASK+"/"+ConfigParams.CURRENT_FILE);
+		FileUtils.useBufferedOutPutStream(key, value, ClientMain.TASK+"/"+ClientMain.CURRENT_FILE);
 	}
 	
 	

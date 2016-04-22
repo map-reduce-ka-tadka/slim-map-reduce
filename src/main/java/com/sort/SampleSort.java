@@ -20,7 +20,8 @@ import java.util.TreeSet;
 import org.apache.commons.lang3.StringUtils;
 
 import com.aws.AWSManager;
-import com.main.ConfigParams;
+import com.main.ClientMain;
+import com.main.ServerMain;
 
 
 public class SampleSort {
@@ -38,9 +39,9 @@ public class SampleSort {
 		// sort data
 		Collections.sort(this.tempRecords, new TemperatureComparator());
 		// sample data
-		int n = this.tempRecords.size() * ConfigParams.N_INSTANCES;
+		int n = this.tempRecords.size() * ClientMain.N_INSTANCES;
 		System.out.println("Total Records Read: " + n);
-		int p = ConfigParams.N_INSTANCES;
+		int p = ClientMain.N_INSTANCES;
 		int w = n / (p * p);
 		System.out.println("n: " + n + " p: " + p + " w: " + w);
 		String samples = getSamples(this.tempRecords, w, p);        
@@ -52,8 +53,9 @@ public class SampleSort {
 		for (int i = 0; i <= (p - 1) * w; i = i + w) {
 			regularSample.add(tempRecords.get(i).getTemperature());
 		}
-		System.out.println("Samples: " + regularSample.size());
+		System.out.println("Samples size: " + regularSample.size());
 		String samples = StringUtils.join(regularSample.toArray(),",");
+		System.out.println("samples: " + samples);
 		return samples;
 	}
 
@@ -69,9 +71,9 @@ public class SampleSort {
 				{
 					for (String sample :  concatSamples.split(",")) 
 						add(new Double(sample));}}.toArray(new Double[concatSamples.split(",").length]);
-						int rho = ConfigParams.N_INSTANCES / 2;
+						int rho = ServerMain.N_INSTANCES / 2;
 						Arrays.sort(sampleArray);
-						for(int i = ConfigParams.N_INSTANCES; i <= (ConfigParams.N_INSTANCES*(ConfigParams.N_INSTANCES-1)) + rho; i = i+ConfigParams.N_INSTANCES) {
+						for(int i = ServerMain.N_INSTANCES; i <= (ServerMain.N_INSTANCES*(ServerMain.N_INSTANCES-1)) + rho; i = i+ServerMain.N_INSTANCES) {
 							pivots += "," + sampleArray[i];
 						}        
 		}
@@ -138,9 +140,9 @@ public class SampleSort {
 	public void phaseFour(int clientId) throws FileNotFoundException, IOException{
 		/* Start of Phase 4 (Merge Partitions) */
 		String concatFileName = this.AWSConnect.readFilesfromS3andConcat(clientId);
-		String s3name = concatFileName.replace(clientId+"/", "");
+		String s3name = concatFileName.replace(clientId + "/", "");
 		// write to s3 appending with Sort Node Name
-		this.AWSConnect.sendFileToS3(concatFileName, ConfigParams.OUTPUT_FOLDER+"/" + s3name);
+		this.AWSConnect.sendFileToS3(concatFileName, ClientMain.OUTPUT_FOLDER + "/" + s3name);
 		/* End of Phase 4 */
 	}
 
