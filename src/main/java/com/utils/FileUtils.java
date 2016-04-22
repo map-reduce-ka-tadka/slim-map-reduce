@@ -2,9 +2,6 @@ package com.utils;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.List;
-
-import com.sort.TemperatureInfo;
 
 public class FileUtils {
 	

@@ -41,7 +41,7 @@ import com.main.Context;
 import com.map.Mapper;
 import com.reduce.Reducer;
 import com.sort.TemperatureInfo;
-import com.utils.CombineFiles;
+import com.utils.FileMerger;
 
 import au.com.bytecode.opencsv.CSVParser;
 
@@ -297,13 +297,13 @@ public class AWSManager {
 					if(x == 0){
 						System.out.println("Merging ..... ");
 						System.out.println(clientId+"/"+localfileNames.get(1) +"....." +clientId+"/"+localfileNames.get(0));
-						CombineFiles.merger(clientId+"/"+localfileNames.get(1),clientId+"/"+localfileNames.get(0),clientId+"/"+"finalPart-"+clientId+"-1");
+						FileMerger.merger(clientId+"/"+localfileNames.get(1),clientId+"/"+localfileNames.get(0),clientId+"/"+"finalPart-"+clientId+"-1");
 						x+=2;
 					}
 					else{
 						System.out.println("Merging ..... ");
 						System.out.println(clientId+"/"+localfileNames.get(x) +"....." +clientId+"/"+"finalPart-"+clientId+"-"+(x-1));
-						CombineFiles.merger(clientId+"/"+localfileNames.get(x),clientId+"/"+"finalPart-"+clientId+"-"+(x-1),clientId+"/"+"finalPart-"+clientId+"-"+x);
+						FileMerger.merger(clientId+"/"+localfileNames.get(x),clientId+"/"+"finalPart-"+clientId+"-"+(x-1),clientId+"/"+"finalPart-"+clientId+"-"+x);
 						x+=1;
 					}
 

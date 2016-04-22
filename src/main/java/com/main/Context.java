@@ -2,6 +2,7 @@ package com.main;
 
 
 import com.map.Mapper;
+import com.net.SortClient;
 import com.reduce.Reducer;
 import com.utils.FileUtils;
 
@@ -30,8 +31,15 @@ public class Context {
 		Context.outputPath = outputPath;
 	}
 
-	public static void write(String key, String value) {
+	public void write(String key, String value) {
 		FileUtils.useBufferedOutPutStream(key, value, ConfigParams.TASK+"/"+ConfigParams.CURRENT_FILE);
+	}
+	
+	public void jobWaitCompletionTrue() {
+		String args[] = new String[4];
+		args[0] = Context.inputPath;
+		args[1] = Context.outputPath;
+		//ClientMain.run(args);
 	}
 	
 	
