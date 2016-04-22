@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -51,6 +52,7 @@ import com.utils.FileUtils;
 public class AWSManager {
 	AmazonS3 s3;	
 	final static short MAX_RETRY = 3;
+	
 	public AWSManager() {
 		this.s3 = configureS3();
 	}
@@ -491,9 +493,16 @@ public class AWSManager {
 		Context context = new Context();
 		File file = new File(ClientMain.REDUCE_PATH);
 		File[] files = file.listFiles();
+		Arrays.sort(files, new Comparator<File>(){
+			@Override
+			public int compare(File f1, File f2) {
+				return f1.getName().compareToIgnoreCase(f2.getName());
+			}			
+		});
+		ClientMain.CURRENT_FILE = "abs-final-output-" + ClientMain.CLIENT_NUM;
 		for (File f: files){
 			if (f.getName().startsWith("" + clientNum)){
-				ClientMain.CURRENT_FILE = "final-output-"+f.getName().split("_")[1];
+				//+f.getName().split("_")[1];
 				BufferedReaderIterable b = new BufferedReaderIterable(f);
 				reducer.reduce(f.getName().split("_")[1], b, context);
 			}
