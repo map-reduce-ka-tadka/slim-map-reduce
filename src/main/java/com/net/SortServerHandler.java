@@ -234,7 +234,9 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 				try {
 					FileWriter fw = new FileWriter("_SUCCESS", false);
 					fw.close();
-					new AWSManager().sendFileToS3("_SUCCESS", ServerMain.OUTPUT_FOLDER + "/_SUCCESS");						
+					new AWSManager().sendFileToS3("_SUCCESS", ServerMain.OUTPUT_FOLDER + "/_SUCCESS");
+					new AWSManager().sendFileToS3(ServerMain.LOGS_PATH + "/" + "server_"+ ServerMain.JOB_ID + ".log", 
+							ServerMain.LOGS_PATH + "/" + "server_"+ ServerMain.JOB_ID + ".log");
 				} 
 				catch (IOException e) {
 					e.printStackTrace();

@@ -110,7 +110,7 @@
                     <!-- MainClass in mainfest make a executable jar -->
                     <archive>
                         <manifest>
-                            <mainClass>com.main.Configuration</mainClass>
+                            <mainClass>com.main.ServerMain</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
