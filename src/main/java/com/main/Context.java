@@ -31,8 +31,8 @@ public class Context {
 		Context.outputPath = outputPath;
 	}
 
-	public void write(String key, String value) {
-		FileUtils.useBufferedOutPutStream(key, value, ConfigParams.TASK+"/"+ConfigParams.CURRENT_FILE);
+	public static void write(String key, String value) {
+		FileUtils.useBufferedOutPutStream(key, value, ClientMain.CURRENT_OPCODE + "/"+ClientMain.CURRENT_FILE);
 	}
 	
 	public void jobWaitCompletionTrue() {

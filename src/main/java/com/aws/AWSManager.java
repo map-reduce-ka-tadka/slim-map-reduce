@@ -36,7 +36,7 @@ import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.amazonaws.util.IOUtils;
 import com.google.common.collect.Lists;
-import com.main.ConfigParams;
+import com.main.ClientMain;
 import com.main.Context;
 import com.map.Mapper;
 import com.reduce.Reducer;
@@ -87,8 +87,8 @@ public class AWSManager {
 			try {
 				// fetching filenames depending on count
 				ObjectListing objectListing = s3.listObjects(new ListObjectsRequest()
-						.withBucketName(ConfigParams.INPUT_BUCKET)
-						.withPrefix(ConfigParams.INPUT_FOLDER + "/")
+						.withBucketName(ClientMain.INPUT_BUCKET)
+						.withPrefix(ClientMain.INPUT_FOLDER + "/")
 						.withDelimiter("/"));
 				TreeMap<Long, String> filenamesMap = new TreeMap<Long, String>();
 				for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
@@ -104,7 +104,7 @@ public class AWSManager {
 				fileList.addAll(filenamesTree);
 
 				System.out.println("Total files: " + fileList.size());
-				List<List<String>> listPartitions = Lists.partition(fileList, ConfigParams.N_INSTANCES);
+				List<List<String>> listPartitions = Lists.partition(fileList, ClientMain.N_INSTANCES);
 				List<List<String>> subElements = listPartitions.stream().limit(2).collect(Collectors.toList());
 				System.out.println("No. of partitions in listPartitions: " + listPartitions.size());
 				String filenames = "";
@@ -126,11 +126,11 @@ public class AWSManager {
 
 				int counter = 0;
 				System.out.printf("From Client, Getting all files from s3://%s/%s with instances %s", 
-						ConfigParams.INPUT_BUCKET, ConfigParams.INPUT_FOLDER, ConfigParams.N_INSTANCES);
+						ClientMain.INPUT_BUCKET, ClientMain.INPUT_FOLDER, ClientMain.N_INSTANCES);
 				for (String filename : filenamesList) {
 					System.out.println("File counter: " + counter);            
 					System.out.println("filename: " + filename);
-					S3Object s3object = this.s3.getObject(new GetObjectRequest(ConfigParams.INPUT_BUCKET, filename));
+					S3Object s3object = this.s3.getObject(new GetObjectRequest(ClientMain.INPUT_BUCKET, filename));
 					BufferedReader reader;
 					try {
 						reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(s3object.getObjectContent())));
@@ -198,7 +198,7 @@ public class AWSManager {
 			try {
 				System.out.println("Uploading File to S3 from a file\n");
 				File file = new File(uploadFileName);
-				this.s3.putObject(new PutObjectRequest(ConfigParams.OUTPUT_BUCKET, ec2FileName, file));
+				this.s3.putObject(new PutObjectRequest(ClientMain.OUTPUT_BUCKET, ec2FileName, file));
 
 			} 
 			catch (AmazonServiceException ase) {
@@ -263,7 +263,7 @@ public class AWSManager {
 					System.out.println("failed trying to create the directory" + clientId);
 				}
 				ObjectListing objectListing = s3.listObjects(new ListObjectsRequest()
-						.withBucketName(ConfigParams.OUTPUT_BUCKET)
+						.withBucketName(ClientMain.OUTPUT_BUCKET)
 						.withPrefix(clientId + "/")
 						.withDelimiter("/"));
 				TreeSet<String> filenamesTree = new TreeSet<String>();
@@ -279,7 +279,7 @@ public class AWSManager {
 				for (String filename : filenamesTree) {
 					System.out.println("File counter: " + counter);            
 					System.out.println("filename: " + filename);
-					S3Object s3object = this.s3.getObject(new GetObjectRequest(ConfigParams.OUTPUT_BUCKET, filename));
+					S3Object s3object = this.s3.getObject(new GetObjectRequest(ClientMain.OUTPUT_BUCKET, filename));
 					try {
 						localfileNames.add(filename.split("/")[1]);
 						S3ObjectInputStream objectContent = s3object.getObjectContent();
@@ -292,7 +292,7 @@ public class AWSManager {
 				System.out.println(localfileNames.toString());
 
 				int x = 0;
-				while (x < ConfigParams.N_INSTANCES)
+				while (x < ClientMain.N_INSTANCES)
 				{
 					if(x == 0){
 						System.out.println("Merging ..... ");
