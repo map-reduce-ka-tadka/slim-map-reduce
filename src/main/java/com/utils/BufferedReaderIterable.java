@@ -27,7 +27,7 @@ public class BufferedReaderIterable implements Iterable<String> {
     
     /**
      * Constructor for BufferedReaderIterable class that accepts a File object
-     * @param br
+     * @param f
      */
     public BufferedReaderIterable( File f ) throws FileNotFoundException {
         br = new BufferedReader( new FileReader( f ) );
@@ -36,7 +36,6 @@ public class BufferedReaderIterable implements Iterable<String> {
     
     /**
      * Constructor for Iterator
-     * @param br
      */
     public Iterator<String> iterator() {
         return i;

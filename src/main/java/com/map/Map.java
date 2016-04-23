@@ -8,7 +8,7 @@ import com.main.Context;
 import com.utils.GenericFactory;
 
 /**
- * Map Class for mapper.
+ * Provides an implementation of Map Task
  * @author Deepen
  */
 public class Map {
@@ -23,7 +23,7 @@ public class Map {
 	}
 
 	/**
-	 * map method for mapper.
+	 * Implementation of map method for Map Task.
 	 * @param clientNum
 	 */
 	public void map(int clientNum) {
