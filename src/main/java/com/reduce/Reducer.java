@@ -2,7 +2,7 @@ package com.reduce;
 
 import com.main.Context;
 /**
- * Abstract Class for Reduce.java
+ * Provides an abstraction of Reducer
  * @author Deepen
  */
 public abstract class Reducer {

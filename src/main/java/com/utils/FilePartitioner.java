@@ -8,7 +8,7 @@ import java.io.IOException;
 import com.main.ClientMain;
 
 /**
- * Partitioned class to split files according to key
+ * Class to partition single file based on key
  * @author Deepen Mehta
  */
 public class FilePartitioner {
