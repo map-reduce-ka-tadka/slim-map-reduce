@@ -9,7 +9,7 @@ import com.main.Context;
 import com.utils.GenericFactory;
 
 /**
- * Reduce Class for reducer.
+ * Provides an implementation of Reduce Task
  * @author Deepen
  */
 public class Reduce {
@@ -22,7 +22,7 @@ public class Reduce {
 		this.reducer = GenericFactory.getInstance(Context.reducer);
 	}
 	/**
-	 * reduce method for reducer.
+	 * Implementation of reduce method for Reduce Task.
 	 * @param clientNum
 	 * @throws FileNotFoundException
 	 */

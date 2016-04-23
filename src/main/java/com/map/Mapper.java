@@ -2,7 +2,7 @@ package com.map;
 
 import com.main.Context;
 /**
- * Abstract Class for Map.java
+ * Provides an abstraction of Mapper
  * @author Deepen
  */
 public abstract class Mapper {
