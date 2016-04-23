@@ -22,7 +22,7 @@ public class FilePartitioner {
 				while (initLine != null) {
 					String[] finalSplit = initLine.split("\t");
 					String key = finalSplit[0];
-					String val = finalSplit[1];				
+					String val = initLine.substring(initLine.indexOf('\t') + 1);
 					FileUtils.writeByKey(val, ClientMain.REDUCE_PATH + "/"+ ClientMain.CLIENT_NUM + "_" + key);
 					initLine = list.readLine();					
 				}
