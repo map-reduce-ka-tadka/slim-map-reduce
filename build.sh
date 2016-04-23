@@ -23,4 +23,4 @@ then
 	echo "Error in building slim-map-reduce.jar. Existing slim-map-reduce.jar will remain untouched."
 	exit 1
 fi
-echo "Latest build of slim-map-reduce.jar is available in lib folder."
+echo "Latest build of slim-map-reduce.jar is available in dist folder."
