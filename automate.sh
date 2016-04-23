@@ -193,7 +193,6 @@ install_software ()
 		fi
 	    scp -i ${key_location} -o StrictHostKeyChecking=no ${key_location} ${user}"@"${name}":/home/${user}/" 1> /dev/null && ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "sudo mkdir -p .${secret_folder}; sudo mv ${key_name_with_extension} .${secret_folder}/"
 	    scp -i ${key_location} -o StrictHostKeyChecking=no -r tempfolder ${user}"@"${name}":/home/${user}/" 1> /dev/null && ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "sudo chmod 777 tempfolder; sudo mv tempfolder .aws; sudo rm -rf tempfolder"
-	    scp -i ${key_location} -o StrictHostKeyChecking=no ${SLIM_MAP_REDUCE_CLASSPATH} ${user}"@"${name}":/home/${user}/" 1> /dev/null
 	done
 
 	# Erase the tempfolder
@@ -205,6 +204,7 @@ install_software ()
 
     # Append the configured port number to master's public address for use in running job JAR
 	local master_ip=$(cat _work/masterPublicAddress.txt)
+	cp _work/masterPublicAddress.txt _work/masterPublicAddressOnly.txt
 	rm -rf _work/masterPublicAddress.txt
 	echo ${master_ip}:${port} > _work/masterPublicAddress.txt
 
@@ -277,20 +277,24 @@ deploy ()
     local jar_name=$1
     local other_params=${@:2}
     echo ${other_params}
-	local master_ip=$(cat _work/masterPublicAddress.txt)
+	local master_ip=$(cat _work/masterPublicAddressOnly.txt)
 	local master_private_ip=$(cat _work/masterPrivateAddress.txt)
 	local client_list=$(cat _work/slavePublicAddresses.txt)
 	local no_of_slaves=$(wc -l < _work/slavePublicAddresses.txt)
-	echo "Starting master at "${master_ip}"..."
-	ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${master_ip} "nohup java -Xms2g -Xmx5g -jar slim-map-reduce.jar ${master_private_ip} ${port} ${no_of_slaves} 1> success.out 2> error.err < /dev/null &"
+
+	echo "Deploying program on master "${master_ip}"..."
+	ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${master_ip} "rm -rf success.out; rm -rf error.err"
 	if [[ $? != 0 ]];
 	then
-	    echo "Could not initialize user program at the master node. Abandoning deployment."
+	    echo "Could not initialize program at the master node. Abandoning deployment."
 	    exit 1
 	fi
+	scp -i ${key_location} -o StrictHostKeyChecking=no ${SLIM_MAP_REDUCE_CLASSPATH} "${user}@${master_ip}:/home/${user}/"
+	ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${master_ip} "nohup java -Xms2g -Xmx5g -jar slim-map-reduce.jar ${master_private_ip} ${port} ${no_of_slaves} 1> success.out 2> error.err < /dev/null &"
+
 	for name in ${client_list[@]}; do
-		echo "Running user program on node "$name"..."
-		ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "nohup java -Xms5g -Xmx10g -jar ${jar_name} ${other_params} 1> success.out 2> error.err < /dev/null &"
+		echo "Deploying user program on node "${name}"..."
+        ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "rm -rf success.out; rm -rf error.err"
 		if [[ $? != 0 ]];
 	    then
 	        echo "Could not submit job to a slave node. Abandoning deployment."
@@ -299,7 +303,10 @@ deploy ()
 	        echo "================================================================================================================================"
 	        exit 1
 	    fi
+	    scp -i ${key_location} -o StrictHostKeyChecking=no ${jar_name} ${user}"@"${name}":/home/${user}/"
+	    ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "nohup java -Xms5g -Xmx10g -jar ${jar_name} ${other_params} 1> success.out 2> error.err < /dev/null &"
 	done
+
 	echo "========================================================================================================="
 	echo "User job is running in the cluster. Check for _SUCCESS or _ERROR file in the output folder after a while."
 	echo "========================================================================================================="
