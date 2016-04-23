@@ -16,7 +16,8 @@
 echo "====================================================================="
 echo "Building slim-map-reduce.jar."
 echo "====================================================================="
-mvn clean package 1> /dev/null && cp target/slim-map-reduce.jar lib/slim-map-reduce.jar
+mkdir -p dist
+mvn clean package 1> /dev/null && cp target/slim-map-reduce.jar dist/slim-map-reduce.jar
 if [[ $? != 0 ]];
 then
 	echo "Error in building slim-map-reduce.jar. Existing slim-map-reduce.jar will remain untouched."
