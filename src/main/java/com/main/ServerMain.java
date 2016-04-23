@@ -1,10 +1,10 @@
-
 package com.main;
 
 import java.util.UUID;
 
 import com.net.SortServer;
 import com.utils.FileUtils;
+
 /**
  * Main Class for Server
  * @author Abhijeet Sharma, Deepen Mehta
@@ -17,7 +17,7 @@ public class ServerMain {
 	public static int SERVER_PORT;
 	public static int N_INSTANCES;
 	public static int ACTIVE_INSTANCES;
-	
+
 	public static String INPUT_PATH;
 	public static String OUTPUT_PATH;
 	public static String OUTPUT_BUCKET;
@@ -26,7 +26,7 @@ public class ServerMain {
 	public static String CURRENT_TASK;
 	public static String LOGS_PATH;
 	public static String TEMP_PATH;
-	
+
 	/**
 	 * Sets the Server Parameters.
 	 * @param params
@@ -63,5 +63,4 @@ public class ServerMain {
 	public static void main(String[] args) throws InterruptedException {
 		ServerMain.run(args);
 	}
-
 }

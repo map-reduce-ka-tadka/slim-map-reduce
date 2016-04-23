@@ -8,13 +8,15 @@ import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 
 /**
- * This class initializes the pipeline for the server.
+ * This class initializes the pipeline for the Client.
  * @author Abhijeet Sharma
  * @version 1.0  
  * @since April 8, 2016 
  */
 public class SortClientInitializer extends ChannelInitializer<SocketChannel> {
-
+	/**
+	 * Initialized the channel pipeline.
+	 */
 	@Override
 	protected void initChannel(SocketChannel channel) throws Exception {
 		ChannelPipeline pipeline = channel.pipeline();

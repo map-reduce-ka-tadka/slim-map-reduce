@@ -8,8 +8,6 @@ import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Splitter;
 import com.net.SortClient;
 
 /**
@@ -26,7 +24,7 @@ public class ClientMain {
 	public static String SERVER_ADDRESS;
 	public static int SERVER_PORT;
 	public static String LOGS_PATH;
-	
+
 	// Initialized by Server
 	public static String JOB_ID;
 	public static Integer CLIENT_NUM;
@@ -37,7 +35,7 @@ public class ClientMain {
 	public static String SORT_PATH;
 	public static String LOCAL_OUTPUT_PATH;
 	public static String REDUCE_PATH;
-	
+
 	public static String CURRENT_FILE;
 	public static String INPUT_BUCKET;
 	public static String INPUT_FOLDER;
@@ -60,7 +58,7 @@ public class ClientMain {
 		INPUT_BUCKET = inputPathSplit[2];
 		INPUT_FOLDER = StringUtils.join(Arrays.asList(inputPathSplit).subList(3, inputPathSplit.length), "/");
 		System.out.println("INPUT BUCKET: " + INPUT_BUCKET + " FOLDER: " + INPUT_FOLDER);
-		
+
 		OUTPUT_PATH  = params[1];
 		if (OUTPUT_PATH.charAt(OUTPUT_PATH.length() - 1) == '/'){
 			OUTPUT_PATH.substring(0, OUTPUT_PATH.length() - 1);

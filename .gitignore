@@ -3,12 +3,12 @@
 
 # Ignore runtime files
 smr.config
-masterPublicAddress.txt
+*.txt
 _SUCCESS
 _ERROR
 *.*~
 
-# Eclipse related folder
+# Eclipse related folders
 .classpath
 .settings
 
@@ -16,10 +16,11 @@ _ERROR
 .idea/
 *.iml
 
-# Temp folder
+# Temp folders
 JOB-*
 logs/
 output/
+_work/
 
 # Java class files
 *.class
@@ -29,6 +30,7 @@ output/
 
 # Package Files #
 *.jar
+!dist/slim-map-reduce.jar
 *.war
 *.ear
 
