@@ -1,4 +1,4 @@
-/*
+/**
  * @author Abhijeet Sharma, Deepen Mehta
  * @version 1.0  
  * @since April 8, 2016 
@@ -49,10 +49,13 @@ import com.utils.BufferedReaderIterable;
 import com.utils.FileMerger;
 import com.utils.FileUtils;
 
+/**
+ * This class helps us manage connections to AWS services
+ */
 public class AWSManager {
 	AmazonS3 s3;	
 	final static short MAX_RETRY = 3;
-	
+
 	public AWSManager() {
 		this.s3 = configureS3();
 	}
@@ -83,6 +86,13 @@ public class AWSManager {
 		return s3;
 	}
 
+	/**
+	 * This method gets all the files from S3 and sorts the files according to their size.These files are then partitioned
+	 *  based on the number of slave nodes.File in each partition is then read and then the concerned value
+	 * (temperature here) is put in an ArrayList.
+	 * @param clientId
+	 * @return
+	 */
 	public ArrayList<SortObject> getAllFiles(int clientId)  {
 		ArrayList<SortObject> sortRecords = new ArrayList<SortObject>();
 		short retryCount = 0;
@@ -90,7 +100,6 @@ public class AWSManager {
 		/* (Run by Client) */
 		do{
 			try {
-				System.out.println("client map: " + ClientMain.OUTPUT_BUCKET + " map: "+ClientMain.MAP_PATH);
 				// fetching filenames depending on count
 				ObjectListing objectListing = s3.listObjects(new ListObjectsRequest()
 						.withBucketName(ClientMain.OUTPUT_BUCKET)
@@ -99,8 +108,6 @@ public class AWSManager {
 				TreeMap<Long, String> filenamesMap = new TreeMap<Long, String>();
 				for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
 					filenamesMap.put(objectSummary.getSize(), objectSummary.getKey());			
-					System.out.println(" - " + objectSummary.getKey() + "  " +
-							"(size = " + objectSummary.getSize() + ")");
 				}
 				TreeSet<String> filenamesTree = new TreeSet<String>(filenamesMap.values());
 				filenamesTree.remove(ClientMain.MAP_PATH+"/");
@@ -109,33 +116,19 @@ public class AWSManager {
 				ArrayList<String> fileList = new ArrayList<String>();
 				fileList.addAll(filenamesTree);
 
-				System.out.println("Total files: " + fileList.size());
 				List<List<String>> listPartitions = Lists.partition(fileList, ClientMain.N_INSTANCES);
-				//List<List<String>> subElements = listPartitions.stream().limit(2).collect(Collectors.toList());
-				System.out.println("No. of partitions in listPartitions: " + listPartitions.size());
 				String filenames = "";
 				for (List<String> elementList : listPartitions){
 					if (elementList.size() > clientId){
 						filenames = String.join(",", filenames, elementList.get(clientId));
 					}
 				}
-				/*for (List<String> elementList : subElements){
-					if (elementList.size() > clientId){
-						filenames = String.join(",", filenames, elementList.get(clientId));
-					}
-				}*/
 
 				filenames = filenames.substring(1);
-				System.out.println("From client, filenames: " + filenames);
 				// fetching only part of actual data
 				String[] filenamesList = filenames.split(",");
-
 				int counter = 0;
-				System.out.printf("From Client, Getting all files from s3://%s/%s with instances %s", 
-						ClientMain.OUTPUT_BUCKET, ClientMain.MAP_PATH, ClientMain.N_INSTANCES);
 				for (String filename : filenamesList) {
-					System.out.println("File counter: " + counter);            
-					System.out.println("filename: " + filename);
 					S3Object s3object = this.s3.getObject(new GetObjectRequest(ClientMain.OUTPUT_BUCKET, filename));
 					BufferedReader reader;
 					try {
@@ -193,23 +186,26 @@ public class AWSManager {
 		while(retry);		
 		return sortRecords;
 	}
+
+	/**
+	 * This method uploads a file and an ec2 file (with the partitions information) to the S3 output. The method tries
+	 * uploading the file to s3 till it reaches a maximum count.
+	 * @param uploadFileName
+	 * @param ec2FileName
+	 */
 	public void sendFileToS3(String uploadFileName, String ec2FileName){
 		short retryCount = 0;
 		short MAX_RETRY = 3;
 		boolean retry = false;
 		do{
 			try {
-				System.out.println("Uploading File to S3 from a file\n");
 				File file = new File(uploadFileName);
 				if (ClientMain.OUTPUT_BUCKET == null){
-					System.out.println("Server is uploading file.");
 					this.s3.putObject(new PutObjectRequest(ServerMain.OUTPUT_BUCKET, ec2FileName, file));
 				}
 				else{
-					System.out.println("Client is uploading file.");
 					this.s3.putObject(new PutObjectRequest(ClientMain.OUTPUT_BUCKET, ec2FileName, file));
 				}
-
 			} 
 			catch (AmazonServiceException ase) {
 				System.out.println("Caught an AmazonServiceException, which " +
@@ -252,13 +248,19 @@ public class AWSManager {
 		while(retry);
 	}
 
+	/**
+	 * This method reads files from S3 output bucket, and merges the contents of the files from different slave nodes.
+	 * @param clientId
+	 * @return
+	 * @throws FileNotFoundException
+	 * @throws IOException
+	 */
 	public String readFilesfromS3andConcat(int clientId) throws FileNotFoundException, IOException {
 		short retryCount = 0;
 		short MAX_RETRY = 3;
 		boolean retry = false;
 		do{
 			try {
-				//String concatenatedFilename = null;
 				// creating a folder
 				FileUtils.createDir(ClientMain.SORT_PATH+"/"+String.valueOf(clientId));
 				ObjectListing objectListing = s3.listObjects(new ListObjectsRequest()
@@ -268,16 +270,11 @@ public class AWSManager {
 				TreeSet<String> filenamesTree = new TreeSet<String>();
 				for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
 					filenamesTree.add(objectSummary.getKey());			
-					System.out.println(" - " + objectSummary.getKey() + "  " +
-							"(size = " + objectSummary.getSize() + ")");
 				}
 				filenamesTree.remove(ClientMain.SORT_PATH+"/"+clientId+"/");
 				int counter = 0;
 				ArrayList<String> localfileNames = new ArrayList<>();
-				System.out.println("Downloading an object");
 				for (String filename : filenamesTree) {
-					System.out.println("File counter: " + counter);            
-					System.out.println("filename: " + filename);
 					S3Object s3object = this.s3.getObject(new GetObjectRequest(ClientMain.OUTPUT_BUCKET, filename));
 					try {
 						localfileNames.add(filename.split("/")[4]);
@@ -288,31 +285,21 @@ public class AWSManager {
 					}
 					counter += 1;
 				}
-				System.out.println(filenamesTree.toString());
-				System.out.println(localfileNames.toString());
-
 				int x = 0;
 				while (x < ClientMain.N_INSTANCES)
 				{
 					if(x == 0){
-						System.out.println("Merging ..... ");
-						System.out.println(ClientMain.SORT_PATH + "/" + clientId+"/"+localfileNames.get(1) +"....." +
-								ClientMain.SORT_PATH + "/" + clientId+"/"+localfileNames.get(0));
 						FileMerger.merger(ClientMain.SORT_PATH + "/" + clientId+"/"+localfileNames.get(1),
 								ClientMain.SORT_PATH + "/" + clientId+"/"+localfileNames.get(0),
 								ClientMain.SORT_PATH + "/" + clientId+"/"+"finalPart-"+clientId+"-1");
 						x+=2;
 					}
 					else{
-						System.out.println("Merging ..... ");
-						System.out.println(ClientMain.SORT_PATH + "/" + clientId+"/"+localfileNames.get(x) + "....." +
-								ClientMain.SORT_PATH + "/" + clientId+"/"+"finalPart-"+clientId+"-"+(x-1));
 						FileMerger.merger(ClientMain.SORT_PATH + "/" + clientId+"/"+localfileNames.get(x), 
 								ClientMain.SORT_PATH + "/" + clientId+"/"+"finalPart-"+clientId+"-"+(x-1),
 								ClientMain.SORT_PATH + "/" + clientId+"/"+"finalPart-"+clientId+"-"+x);
 						x+=1;
 					}
-
 				}
 				return ClientMain.SORT_PATH + "/" + clientId + "/" + "finalPart-" + clientId + "-" + (x-1);
 			} 
@@ -370,6 +357,11 @@ public class AWSManager {
 		return null;		
 	}
 
+	/**
+	 * Mapper method to fetch all files
+	 * @param clientId
+	 * @param mapper
+	 */
 	public void mapAllFiles(int clientId, Mapper mapper) {
 		Context context = new Context();
 		short retryCount = 0;
@@ -385,65 +377,36 @@ public class AWSManager {
 				TreeMap<Long, String> filenamesMap = new TreeMap<Long, String>();
 				for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
 					filenamesMap.put(objectSummary.getSize(), objectSummary.getKey());			
-					System.out.println(" - " + objectSummary.getKey() + "  " +
-							"(size = " + objectSummary.getSize() + ")");
 				}
 				TreeSet<String> filenamesTree = new TreeSet<String>(filenamesMap.values());
 				filenamesTree.remove(ClientMain.INPUT_FOLDER + "/");
-
 				// save all filenames to a list
 				ArrayList<String> fileList = new ArrayList<String>();
 				fileList.addAll(filenamesTree);
-
-				System.out.println("Total files: " + fileList.size());
 				List<List<String>> listPartitions = Lists.partition(fileList, ClientMain.N_INSTANCES);
-				//List<List<String>> subElements = listPartitions.stream().limit(2).collect(Collectors.toList());
-				System.out.println("No. of partitions in listPartitions: " + listPartitions.size());
 				String filenames = "";
 				for (List<String> elementList : listPartitions){
-					System.out.println("elementList: " + elementList.toString());
 					if (elementList.size() > clientId){
 						filenames = String.join(",", filenames, elementList.get(clientId));
 					}
 				}
-				/*for (List<String> elementList : subElements){
-					if (elementList.size() > clientId){
-						filenames = String.join(",", filenames, elementList.get(clientId));
-					}
-				}*/
-				System.out.println("From client bef, filenames: " + filenames);
 				filenames = filenames.substring(1);
-				System.out.println("clientId: "+clientId);
-				System.out.println("From client, filenames: " + filenames);
 				// fetching only part of actual data
 				String[] filenamesList = filenames.split(",");
-
 				int counter = 0;
-				System.out.printf("From Client, Getting all files from s3://%s/%s with instances %s", 
-						ClientMain.INPUT_BUCKET, ClientMain.INPUT_FOLDER, ClientMain.N_INSTANCES);
 				for (String filename : filenamesList) {
-					System.out.println("fname: " +Arrays.toString(filename.substring(filename.lastIndexOf('/') + 1).split("\\.")));
 					String currentFile = filename.substring(filename.lastIndexOf('/') + 1).split("\\.")[0];
 					ClientMain.CURRENT_FILE = currentFile;
-					System.out.println("File counter: " + counter);            
-					System.out.println("filename: " + filename);
-					System.out.println("Actual filename: " + ClientMain.CURRENT_FILE);
 					S3Object s3object = this.s3.getObject(new GetObjectRequest(ClientMain.INPUT_BUCKET, filename));
 					BufferedReader reader;
 					try {
 						reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(s3object.getObjectContent())));
 						String line;
 						while ((line = reader.readLine()) != null) {
-							/*CSVParser csvParser = new CSVParser(',', '"');
-							String[] parsedString;
-							parsedString = csvParser.parseLine(line);
-							TemperatureInfo tempInfo = TemperatureInfo.createInstance(parsedString);
-							if (tempInfo != null) {
-								temperatureRecords.add(tempInfo);
-							}*/
 							mapper.map(null, line, context);
 						}
 					} catch (IOException e) {
+						e.printStackTrace();
 					}
 					counter += 1;
 				}
@@ -489,6 +452,12 @@ public class AWSManager {
 		while(retry);	
 	}
 
+	/**
+	 * Reducer method that performs the reduce operation on sorted output
+	 * @param clientNum
+	 * @param reducer
+	 * @throws FileNotFoundException
+	 */
 	public void reduceKey(int clientNum, Reducer reducer) throws FileNotFoundException {
 		Context context = new Context();
 		File file = new File(ClientMain.REDUCE_PATH);

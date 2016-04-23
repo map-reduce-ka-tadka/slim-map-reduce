@@ -3,7 +3,7 @@
 
 # Ignore runtime files
 smr.config
-masterPublicAddress.txt
+*.txt
 _SUCCESS
 _ERROR
 *.*~
@@ -30,6 +30,7 @@ _work/
 
 # Package Files #
 *.jar
+!dist/slim-map-reduce.jar
 *.war
 *.ear
 
