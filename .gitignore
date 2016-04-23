@@ -30,6 +30,7 @@ _work/
 
 # Package Files #
 *.jar
+!dist/slim-map-reduce.jar
 *.war
 *.ear
 
