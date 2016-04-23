@@ -1,8 +1,3 @@
-/*
- * @author Abhijeet Sharma
- * @version 1.0  
- * @since April 8, 2016 
- */
 
 package com.net;
 
@@ -22,13 +17,19 @@ import com.utils.MessageHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
+/**
+ * @author Abhijeet Sharma
+ * @version 1.0  
+ * @since April 8, 2016 
+ */
 public class SortClientHandler extends ChannelInboundHandlerAdapter{
 	public SampleSort ss;
 	public static HashMap<String, String> addressMap = new HashMap<String, String>();
+	// Message Status
 	static final int SUCCESS_STATUS = 1;
 	static final int WAIT_STATUS = 0;
 	static final int FAILURE_STATUS = -1;
-
+	// Message OpCodes
 	static final int CLIENT_HANDSHAKE_OPCODE = 0;
 	static final int MAP_OPCODE = 1;
 	static final int SORT_READ_AND_SAMPLE_DATA_OPCODE = 2;
@@ -47,6 +48,9 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 		SortClient.LOG.info("[{}] is Connected to Server: {}", InetAddress.getLocalHost().getHostAddress().toString(), ctx.channel().remoteAddress());
 	}
 
+	/**
+	 * Reads the message Handler object from the incoming Channel
+	 */
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws InterruptedException, IOException, IllegalAccessException, InstantiationException {
 		MessageHandler message = (MessageHandler) msg;
@@ -54,16 +58,14 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 		int requestCodeFromServer = message.getCode();
 		String messageFromServer = message.getMessage();		
 		int StatusFromServer = message.getStatus();
-
 		MessageHandler response = null;
-
 		if (StatusFromServer == FAILURE_STATUS){
 			response = new MessageHandler(requestCodeFromServer, messageFromServer, FAILURE_STATUS);
 		}
 		else if (StatusFromServer == WAIT_STATUS){
 			SortClient.LOG.info("Message received from Server: {}", message.toString());			   
 			Thread.sleep(6000);
-			System.out.println("Requesting server again..");
+			SortClient.LOG.info("Requesting Server Again..");
 			response =  new MessageHandler(requestCodeFromServer, messageFromServer, SUCCESS_STATUS);
 		}
 		else{
@@ -81,15 +83,10 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 			}
 			else if (requestCodeFromServer == MAP_OPCODE){
 				SortClient.LOG.info("Received AddressMap from Server: {}", messageFromServer);
-				//String[] mapMessage = messageFromServer.split("_");
 				ClientMain.CURRENT_OPCODE = MAP_OPCODE;
 				String[] addList = messageFromServer.replace("[", "").replace("]", "").replace("/", "").split(",");
 				for (String elem : addList){
 					String[] elemList = elem.split("=");
-					System.out.println("cid: " + ClientMain.CLIENT_ID);
-					System.out.println("val0.1: "+elemList);
-					System.out.println("val1: "+elemList[1]);
-					System.out.println("val: " + elemList[1].split("\t")[0]);
 					if (elemList[0].trim().equals(ClientMain.CLIENT_ID)){
 						ClientMain.CLIENT_NUM = Integer.parseInt(elemList[1].split("\t")[0]);
 					}
@@ -99,11 +96,8 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 				Map m = new Map();
 				ClientMain.MAP_PATH = ClientMain.TEMP_PATH + "/" + "map";
 				FileUtils.createDir(ClientMain.MAP_PATH);
-				//FileUtils.createDir(ClientMain.JOB_ID + "/" + "_temp" + "/" + "map");
-				System.out.println("In client, map: " + ClientMain.CLIENT_NUM);
 				m.map(ClientMain.CLIENT_NUM);
 				SortClient.LOG.info("[END MAP PHASE]  => Map");
-
 				SortClient.LOG.info("Requesting to Start Shuffle-Sort Step");
 				response = new MessageHandler(MAP_OPCODE, "Map Done", SUCCESS_STATUS);
 			}
@@ -141,7 +135,6 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 				Reduce r = new Reduce();
 				ClientMain.LOCAL_OUTPUT_PATH = ClientMain.OUTPUT_FOLDER;
 				FileUtils.createDir(ClientMain.LOCAL_OUTPUT_PATH);
-				//FileUtils.createDir(ClientMain.TEMP_PATH + "/" + "reduce");
 				r.reduce(ClientMain.CLIENT_NUM);
 				SortClient.LOG.info("[END REDUCE PHASE] => Reduce");
 				SortClient.LOG.info("Requesting server to shutdown Client");
@@ -153,11 +146,17 @@ public class SortClientHandler extends ChannelInboundHandlerAdapter{
 		ctx.write(response);
 	}
 
+	/**
+	 * Method for behavior when a channel read is complete.
+	 */
 	@Override
 	public void channelReadComplete(ChannelHandlerContext ctx) {
 		ctx.flush();
 	}
 
+	/**
+	 * Method for behavior when a exception occurs in a channel.
+	 */
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
 		cause.printStackTrace();
