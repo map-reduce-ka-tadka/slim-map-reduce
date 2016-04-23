@@ -21,19 +21,19 @@ public class Map {
 		this.AWSConnect = new AWSManager();
 		this.mapper = GenericFactory.getInstance(Context.mapper);
 	}
-	
+
 	/**
 	 * map method for mapper.
 	 * @param clientNum
 	 */
 	public void map(int clientNum) {
-		AWSConnect.mapAllFiles(clientNum, this.mapper);		
+		AWSConnect.mapAllFiles(clientNum, this.mapper);	
 		File mapDirectory = new File(ClientMain.MAP_PATH);
 		File[] files = mapDirectory.listFiles();
 		for(File f : files) {
 			if (f.getName().startsWith(""+clientNum)){
 				AWSConnect.sendFileToS3(ClientMain.MAP_PATH+"/"+f.getName(), ClientMain.MAP_PATH+"/"+f.getName());	
 			}			
-		}		
-	}
+		}
+	}	
 }

@@ -5,7 +5,6 @@ import java.net.InetSocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.main.ClientMain;
 import com.main.ServerMain;
 
 import io.netty.bootstrap.ServerBootstrap;
@@ -47,8 +46,6 @@ public class SortServer {
 				}
 			})
 			.option(ChannelOption.SO_BACKLOG, 128)
-			//.childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 32 * 1024);
-			//.childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);   
 			.childOption(ChannelOption.SO_KEEPALIVE, true)
 			.childOption(ChannelOption.TCP_NODELAY, true);
 			// Start the server.

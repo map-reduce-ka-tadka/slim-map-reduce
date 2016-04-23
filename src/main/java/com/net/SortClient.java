@@ -42,14 +42,11 @@ public class SortClient {
 					ch.pipeline().addLast(new SortClientInitializer());
 				}
 			});
-			//.childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 32 * 1024);
-			//.childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);
 			LOG.info("Client connecting to {}:{}", ClientMain.SERVER_ADDRESS, ClientMain.SERVER_PORT);
 			// Start the client.
 			ChannelFuture f = boot.connect(new InetSocketAddress(ClientMain.SERVER_ADDRESS, ClientMain.SERVER_PORT)).sync();			
 			// Wait until the connection is closed.
 			f.channel().closeFuture().sync();
-
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {

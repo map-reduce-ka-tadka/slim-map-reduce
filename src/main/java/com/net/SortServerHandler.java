@@ -2,7 +2,6 @@ package com.net;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -14,7 +13,6 @@ import java.util.TreeSet;
 import org.apache.commons.lang3.StringUtils;
 
 import com.aws.AWSManager;
-import com.main.ClientMain;
 import com.main.ServerMain;
 import com.sort.SampleSort;
 import com.utils.MessageHandler;
@@ -49,7 +47,6 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 	static final int CLIENT_EXIT_OPCODE = -100;
 	// Client Num Counter
 	static int counter = 0;
-	
 	static final ChannelGroup channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 	static HashSet<String> connectionSet = new HashSet<String>();
 	static Integer worldState = WORLD_STATE_START;    
@@ -60,6 +57,9 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 	static String pivots;
 	static Map<String, String> addressMap = new HashMap<String, String>();
 
+	/**
+	 * Method for behavior when a new channel handler is added
+	 */
 	@Override
 	public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
 		SortServer.LOG.info("[START] A New Client has Connected with Address: {}", ctx.channel().remoteAddress());
@@ -68,6 +68,9 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 		super.handlerAdded(ctx);
 	}
 
+	/**
+	 * Method for behavior when a new channel handler is removed
+	 */
 	@Override
 	public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
 		SortServer.LOG.info("[END] The Client has been disconnected with Address: {}", ctx.channel().remoteAddress());
@@ -77,25 +80,24 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 		super.handlerRemoved(ctx);
 	}
 
+	/**
+	 * Method for behavior when a channel is active.
+	 */
 	@Override
 	public void channelActive(final ChannelHandlerContext ctx) throws UnknownHostException {
-		// TODO: Use ctx.channel().isWritable() then write to prevent OutOfMemoryError
 		SortServer.LOG.info("Connected to the client: {}", ctx.channel().remoteAddress());
 		connectionSet.add(ctx.channel().remoteAddress().toString());       
-		// See if everyone's ready
+		// See if all clients are ready to move to next step
 		if (connectionSet.size() == ServerMain.N_INSTANCES){
 			SortServer.LOG.info("All Clients Connected. connectionSet: {}", connectionSet.toString());
 			worldState += 1;
 		}   	
 		ctx.writeAndFlush(new MessageHandler(CLIENT_HANDSHAKE_OPCODE, ServerMain.JOB_ID + "_" + ServerMain.N_INSTANCES, SUCCESS_STATUS));
-		/*Channel channel = ...;
-		FileChannel fc = ...;
-		channel.writeAndFlush(new DefaultFileRegion(fc, 0, fileLength));
-		This only works if you not need to modify the data on the fly. If so use ChunkedWriteHandler and NioChunkedFile.*/
-
-		/*Schedule and execute tasks via EventLoop this reduces the needed Threads and also makes sure it’s Thread-safe*/
 	}
 
+	/**
+	 * Method for behavior when a channel is read.
+	 */
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) {
 		//SortServer.LOG.info("Reading Channel from: {}", ctx.channel().remoteAddress());
@@ -104,7 +106,6 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 		int clientCompletionCode = message.getCode();
 		String clientMessage = message.getMessage();		
 		int clientStatus = message.getStatus();
-
 		if (clientStatus == FAILURE_STATUS){
 			SortServer.LOG.info("Failure from Client.Shutting Down Client and Creating Error File.");
 			try {
@@ -136,35 +137,20 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 						addressMap.put(clientId, counter + "\t" + ctx.channel().remoteAddress().toString());
 						counter += 1;
 					}
-					/*if (addressMap.size() == ServerMain.N_INSTANCES){
-						ctx.writeAndFlush(new MessageHandler(MAP_OPCODE, addressMap.entrySet().toString(), SUCCESS_STATUS));
-						worldState += 1;
-					}
-					else{
-						ctx.writeAndFlush(new MessageHandler(CLIENT_HANDSHAKE_OPCODE, clientMessage, WAIT_STATUS));
-					}*/
 				}
-				//add set
-				//SortServer.LOG.info("Inside add set for Client: {}", ctx.channel().remoteAddress());
 				else if (clientCompletionCode == SORT_READ_AND_SAMPLE_DATA_OPCODE){
 					//Store all samples in a set
 					sampleSet.add(clientMessage); 
-				}    		
-				
-				
+				}
 				if (stateMap.containsKey(clientCompletionCode)){
 					// Atleast one another client has also finished this step.
 					// Add this step and Client IP to stateMap.
 					HashSet<String> hs = stateMap.get(clientCompletionCode);
 					hs.add(ctx.channel().remoteAddress().toString());
 					stateMap.put(clientCompletionCode, hs);
-					System.out.println("stateMap: " + stateMap.entrySet().toString());
 					if (hs.size() == ServerMain.N_INSTANCES){
 						// All clients have completed this step.
 						// Increment World State and Proceed with next step
-						if (clientCompletionCode == CLIENT_HANDSHAKE_OPCODE){
-							//worldState += 1;
-						}
 						if (clientCompletionCode == SORT_READ_AND_SAMPLE_DATA_OPCODE) {
 							// Samples from all clients received, Find pivots.
 							String samples = StringUtils.join(sampleSet, ",");
@@ -187,18 +173,22 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 					HashSet<String> hs = new HashSet<String>();
 					hs.add(ctx.channel().remoteAddress().toString());
 					stateMap.put(clientCompletionCode, hs);
-					System.out.println("stateMap: " + stateMap.entrySet().toString());
 					ctx.writeAndFlush(new MessageHandler(clientCompletionCode, clientMessage, WAIT_STATUS));
 				}  
 			}
 			else if ((clientCompletionCode < (worldState - 1)) || (clientCompletionCode == CLIENT_EXIT_OPCODE)){
 				//Free pass for clients who have lagged behind
-				//SortServer.LOG.info("Inside free pass for Client: {}", ctx.channel().remoteAddress()) ;
 				executeNextStep(ctx, clientCompletionCode, clientMessage);
 			}
 		}
 	}
 
+	/**
+	 * Method to execute next step.
+	 * @param ctx
+	 * @param code
+	 * @param message
+	 */
 	public void executeNextStep(ChannelHandlerContext ctx, int code, String message){
 		MessageHandler result = null;
 		switch (code) {
@@ -238,7 +228,6 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 					FileWriter fw = new FileWriter("_SUCCESS", false);
 					fw.close();
 					new AWSManager().sendFileToS3("_SUCCESS", ServerMain.OUTPUT_FOLDER + "/_SUCCESS");
-					System.out.println("logpath: " + ServerMain.LOGS_PATH + "/" + "server_"+ ServerMain.JOB_ID + ".log");
 					new AWSManager().sendFileToS3(ServerMain.LOGS_PATH + "/" + "server_"+ ServerMain.JOB_ID + ".log", 
 							ServerMain.LOGS_PATH + "/" + "server_"+ ServerMain.JOB_ID + ".log");
 				} 
@@ -255,14 +244,28 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 		}
 	}
 
+	/**
+	 * Method for behavior when a channel read is complete.
+	 */
 	@Override
 	public void channelReadComplete(ChannelHandlerContext ctx) {
 		ctx.flush();
 	}
 
+	/**
+	 * Method for behavior when a exception occurs in a channel.
+	 */
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
 		cause.printStackTrace();
-		ctx.close();
+		try {
+			FileWriter fw = new FileWriter("_ERROR", false);
+			fw.close();
+			new AWSManager().sendFileToS3("_ERROR", ServerMain.OUTPUT_FOLDER + "/_ERROR");
+			ctx.close();
+		} 
+		catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }
