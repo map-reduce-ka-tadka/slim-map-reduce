@@ -8,20 +8,26 @@ import com.main.ClientMain;
 import com.main.Context;
 import com.utils.GenericFactory;
 
+/**
+ * Reduce Class for reducer.
+ * @author Deepen
+ */
 public class Reduce {
-	
 	public AWSManager AWSConnect;
 	Reducer reducer; 
 	public Context context = new Context();
-	
+
 	public Reduce() throws IllegalAccessException, InstantiationException {
 		this.AWSConnect = new AWSManager();
 		this.reducer = GenericFactory.getInstance(Context.reducer);
 	}
-	
+	/**
+	 * reduce method for reducer.
+	 * @param clientNum
+	 * @throws FileNotFoundException
+	 */
 	public void reduce(int clientNum) throws FileNotFoundException {
 		AWSConnect.reduceKey(clientNum, this.reducer);		
-		//AWSConnect.sendFileToS3(ClientMain.LOCAL_OUTPUT_PATH, ClientMain.LOCAL_OUTPUT_PATH);
 		File outputDirectory = new File(ClientMain.LOCAL_OUTPUT_PATH);
 		File[] files = outputDirectory.listFiles();
 		for(File f : files) {
@@ -29,6 +35,5 @@ public class Reduce {
 				AWSConnect.sendFileToS3(ClientMain.LOCAL_OUTPUT_PATH+"/"+f.getName(), ClientMain.LOCAL_OUTPUT_PATH+"/"+f.getName());	
 			}			
 		}		
-		// send response to master finish of reduce task
 	}
 }

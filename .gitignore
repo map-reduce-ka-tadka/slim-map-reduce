@@ -3,7 +3,7 @@
 
 # Ignore runtime files
 smr.config
-masterPublicAddress.txt
+*.txt
 _SUCCESS
 _ERROR
 *.*~

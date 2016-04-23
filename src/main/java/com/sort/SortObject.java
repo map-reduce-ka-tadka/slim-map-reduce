@@ -8,6 +8,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 
+/**
+ * Custom class for Sorting the data
+ * @author Deepen
+ *
+ */
 public class SortObject {
 
 	public String key;
@@ -42,7 +47,6 @@ public class SortObject {
 		this.value = value;
 	}
 
-
 	/**
 	 * @param key
 	 * @param value
@@ -52,7 +56,11 @@ public class SortObject {
 		this.value = value;
 	}
 
-
+	/**
+	 * Method to insert the records in a HashMap
+	 * @param dataMap
+	 * @param record
+	 */
 	public static void upsertData(HashMap<String, ArrayList<SortObject>> dataMap, SortObject record) {
 		if (dataMap.containsKey(record.getKey())) {
 			ArrayList<SortObject> temp = dataMap.get(record.getKey());
@@ -71,14 +79,15 @@ public class SortObject {
 	public String toString() {
 		return "SortObject [key=" + key + ", value=" + value + "]";
 	}
-
-
-
 }
 
+/**
+ * Custom class for compare method 
+ * @author Deepen
+ *
+ */
 class SortComparator implements Comparator<SortObject> {
 	public int compare(SortObject object1, SortObject object2) {
 		return object1.getKey().compareToIgnoreCase(object2.getKey());
 	}
 }
-
