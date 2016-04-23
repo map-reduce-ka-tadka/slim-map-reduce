@@ -12,11 +12,10 @@
 #
 # Step 0:
 # =======
-# Run the following to make this script executable - chmod +x automate.sh
+# Run the following to make this script executable -> chmod +x automate.sh
 #
 # Usage:
 # ======
-#  ./automate.sh build                                (builds slim-map-reduce.jar from source)
 #  ./automate.sh start {No. of slaves}                (spins up EC2 instances, installs required software and starts the master)
 #  ./automate.sh stop                                 (terminate all EC2 instances to save money)
 #  ./automate.sh deploy {Job JAR} {arguments for JAR} (run Slim MapReduce job in the cluster and wait for the result in output S3 bucket)
@@ -89,19 +88,6 @@ cleanup ()
     echo "Cleaning up..."
     rm -rf _work
 	rm -rf tempfolder
-}
-
-build ()
-{
-    # Build slim-map-reduce.jar and copy to working folder for deployment
-    echo "Building slim-map-reduce.jar..."
-	mvn clean package 1> /dev/null && cp target/slim-map-reduce.jar .
-	if [[ $? != 0 ]];
-	then
-		echo "Error in building slim-map-reduce.jar. Existing slim-map-reduce.jar will remain untouched."
-		cleanup
-		exit 1
-	fi
 }
 
 stop ()
@@ -250,6 +236,11 @@ start ()
 {
     # First argument to this function is the number of slave nodes to spawn
     local count=$1      # Number of slave nodes excluding master
+    if [ -z "$count" ];
+    then
+        echo "Number of slave instances is not mentioned." >&2
+        exit 1 # Exit the script with an error status
+    fi
     echo "==============================================================="
 	echo "Initializing a cluster with 1 master and ${count} EC2 machines."
 	echo "==============================================================="
@@ -322,8 +313,5 @@ case "$1" in
 		;;
 	stop)
 		stop
-		;;
-	build)
-		build
 		;;
 esac

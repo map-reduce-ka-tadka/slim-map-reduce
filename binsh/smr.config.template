@@ -11,7 +11,7 @@
 # ================================================================================
 
 # Provide the path to slim-map-reduce.jar (classpath)
-# Example: /home/amraje/Documents/slim-map-reduce.jar
+# Example: SLIM_MAP_REDUCE_CLASSPATH="/home/amraje/slim-map-reduce/lib/slim-map-reduce.jar"
 
 SLIM_MAP_REDUCE_CLASSPATH=""
 
