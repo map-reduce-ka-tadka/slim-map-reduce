@@ -3,7 +3,9 @@ package com.net;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -53,7 +55,7 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 	static Map<Integer, HashSet<String>> stateMap = new HashMap<Integer, HashSet<String>>();
 	static Queue<String> filenameQueue;   
 	static int shutDownCount = 0;
-	static TreeSet<String> sampleSet = new TreeSet<String>();;
+	static ArrayList<String> sampleList = new ArrayList<String>();
 	static String pivots;
 	static Map<String, String> addressMap = new HashMap<String, String>();
 
@@ -139,7 +141,8 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 				}
 				else if (clientCompletionCode == SORT_READ_AND_SAMPLE_DATA_OPCODE){
 					//Store all samples in a set
-					sampleSet.add(clientMessage); 
+					sampleList.add(clientMessage);
+					Collections.sort(sampleList, String.CASE_INSENSITIVE_ORDER);
 				}
 				if (stateMap.containsKey(clientCompletionCode)){
 					// Atleast one another client has also finished this step.
@@ -152,7 +155,7 @@ public class SortServerHandler extends ChannelInboundHandlerAdapter{
 						// Increment World State and Proceed with next step
 						if (clientCompletionCode == SORT_READ_AND_SAMPLE_DATA_OPCODE) {
 							// Samples from all clients received, Find pivots.
-							String samples = StringUtils.join(sampleSet, ",");
+							String samples = StringUtils.join(sampleList, ",");
 							pivots = SampleSort.fetchPivotsFromSamples(samples);
 							worldState += 1;
 						}

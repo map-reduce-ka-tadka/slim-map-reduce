@@ -267,35 +267,60 @@ deploy ()
 	echo "============================================================================================"
     local jar_name=$1
     local other_params=${@:2}
-    echo ${other_params}
 	local master_ip=$(cat _work/masterPublicAddressOnly.txt)
 	local master_private_ip=$(cat _work/masterPrivateAddress.txt)
 	local client_list=$(cat _work/slavePublicAddresses.txt)
 	local no_of_slaves=$(wc -l < _work/slavePublicAddresses.txt)
 
-	echo "Deploying program on master "${master_ip}"..."
+	echo "Starting resource manager on master "${master_ip}"..."
 	ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${master_ip} "rm -rf success.out; rm -rf error.err"
 	if [[ $? != 0 ]];
 	then
-	    echo "Could not initialize program at the master node. Abandoning deployment."
+	    echo "Could not connect to master. Abandoning deployment."
 	    exit 1
 	fi
 	scp -i ${key_location} -o StrictHostKeyChecking=no ${SLIM_MAP_REDUCE_CLASSPATH} "${user}@${master_ip}:/home/${user}/"
+	if [[ $? != 0 ]];
+	then
+	    echo "Could not deploy to master. Abandoning deployment."
+	    exit 1
+	fi
 	ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${master_ip} "nohup java -Xms2g -Xmx5g -jar slim-map-reduce.jar ${master_private_ip} ${port} ${no_of_slaves} 1> success.out 2> error.err < /dev/null &"
+    if [[ $? != 0 ]];
+	then
+	    echo "Could not start resource manager on master. Abandoning deployment."
+	    exit 1
+	fi
 
 	for name in ${client_list[@]}; do
-		echo "Deploying user program on node "${name}"..."
+		echo "Starting job on node "${name}"..."
         ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "rm -rf success.out; rm -rf error.err"
 		if [[ $? != 0 ]];
 	    then
-	        echo "Could not submit job to a slave node. Abandoning deployment."
+	        echo "Could not connect to slave instance. Abandoning deployment."
 	        echo "================================================================================================================================"
-	        echo "User program might still be running at master and other slave EC2 instances. Stop user program on all machines and deploy again."
+	        echo "User program might still be running at master. Terminate cluster and deploy again."
 	        echo "================================================================================================================================"
 	        exit 1
 	    fi
 	    scp -i ${key_location} -o StrictHostKeyChecking=no ${jar_name} ${user}"@"${name}":/home/${user}/"
+	    if [[ $? != 0 ]];
+	    then
+	        echo "Could not deploy to slave instance. Abandoning deployment."
+	        echo "================================================================================================================================"
+	        echo "User program might still be running at master. Terminate cluster and deploy again."
+	        echo "================================================================================================================================"
+	        exit 1
+	    fi
 	    ssh -i ${key_location} -o StrictHostKeyChecking=no ${user}"@"${name} "nohup java -Xms5g -Xmx10g -jar ${jar_name} ${other_params} 1> success.out 2> error.err < /dev/null &"
+	    if [[ $? != 0 ]];
+	    then
+	        echo "Could not start job on slave instance. Abandoning deployment."
+	        echo "================================================================================================================================"
+	        echo "User program might still be running at master and other slave EC2 instances. Terminate cluster and deploy again."
+	        echo "================================================================================================================================"
+	        exit 1
+	    fi
 	done
 
 	echo "========================================================================================================="
