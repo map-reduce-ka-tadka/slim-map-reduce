@@ -20,9 +20,7 @@ public class Map {
 	}
 	
 	public void map(int clientNum) {
-		System.out.println("In client, map: " + clientNum);
-		AWSConnect.mapAllFiles(clientNum, this.mapper);
-		
+		AWSConnect.mapAllFiles(clientNum, this.mapper);	
 		File mapDirectory = new File(ClientMain.MAP_PATH);
 		File[] files = mapDirectory.listFiles();
 		for(File f : files) {
@@ -30,7 +28,5 @@ public class Map {
 				AWSConnect.sendFileToS3(ClientMain.MAP_PATH+"/"+f.getName(), ClientMain.MAP_PATH+"/"+f.getName());	
 			}			
 		}		
-		// send response to master finish of map task
-	}
-		
+	}	
 }
