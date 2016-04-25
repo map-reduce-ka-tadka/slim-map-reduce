@@ -4,7 +4,7 @@
  * @since April 8, 2016 
  */
 
-package com.examples;
+package com.examples.wordcount;
 
 import com.main.Context;
 import com.reduce.Reducer;
